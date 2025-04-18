@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { CalendarEvent, getGoogleCalendarEvents, getMicrosoftCalendarEvents, mergeCalendarEvents } from "@/services/calendar-service";
 import { ScheduleComponent, Day, Week, WorkWeek, Month, Agenda, Inject, ViewsDirective, ViewDirective } from '@syncfusion/ej2-react-schedule';
-import { DateTimePickerComponent } from '@syncfusion/ej2-react-calendars';
 import { registerLicense } from '@syncfusion/ej2-base';
 // Required CSS imports for Syncfusion
 import '@syncfusion/ej2-base/styles/material.css';
@@ -68,7 +67,7 @@ export default function CalendarView() {
   const [isLoading, setIsLoading] = useState(true);
   const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const scheduleRef = useRef<ScheduleComponent>(null);
+  const scheduleRef = useRef(null);
 
   useEffect(() => {
     // Add custom styles for Syncfusion scheduler
@@ -223,7 +222,7 @@ export default function CalendarView() {
   const syncfusionEvents = convertToSyncfusionEvents(calendarEvents);
 
   // Event template to customize appearance based on provider
-  const eventTemplate = (props: any) => {
+  const eventTemplate = (props) => {
     const sourceColor = props.CategoryColor || '#3174ad';
     
     return (
