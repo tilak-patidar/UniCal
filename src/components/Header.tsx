@@ -1,12 +1,65 @@
 "use client";
 
 import { useSession, signIn, signOut } from "next-auth/react";
-import { Fragment } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import { UserIcon } from "@heroicons/react/24/outline";
 
 export default function Header() {
   const { data: session, status } = useSession();
+  const [connectedProviders, setConnectedProviders] = useState<string[]>(
+    session?.provider ? [session.provider] : []
+  );
+
+  // Track when a provider is being connected
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // Function to link a new provider without signing out
+  const handleConnectProvider = async (provider: string) => {
+    if (!session || connectedProviders.includes(provider)) return;
+    
+    setIsConnecting(true);
+    
+    // We'll use localStorage to store our current provider before connecting a new one
+    localStorage.setItem("currentProvider", session.provider || "");
+    localStorage.setItem("currentAccessToken", session.accessToken || "");
+    localStorage.setItem("currentRefreshToken", session.refreshToken || "");
+    
+    // Store current connected providers
+    localStorage.setItem("connectedProviders", JSON.stringify(connectedProviders));
+    
+    // Connect the new provider
+    await signIn(provider, { callbackUrl: "/" });
+  };
+
+  // Load previously connected providers from localStorage on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && session) {
+      const storedProviders = localStorage.getItem("connectedProviders");
+      const currentProvider = localStorage.getItem("currentProvider");
+      
+      if (storedProviders) {
+        try {
+          const providers = JSON.parse(storedProviders);
+          if (!providers.includes(session.provider) && session.provider) {
+            // Add new provider to the list if it's not already there
+            const updatedProviders = [...providers, session.provider];
+            setConnectedProviders(updatedProviders);
+            localStorage.setItem("connectedProviders", JSON.stringify(updatedProviders));
+          } else {
+            setConnectedProviders(providers);
+          }
+        } catch (e) {
+          console.error("Error parsing stored providers", e);
+        }
+      } else if (session.provider) {
+        setConnectedProviders([session.provider]);
+        localStorage.setItem("connectedProviders", JSON.stringify([session.provider]));
+      }
+      
+      setIsConnecting(false);
+    }
+  }, [session]);
 
   return (
     <header className="flex items-center justify-between p-4 border-b bg-white">
@@ -19,26 +72,26 @@ export default function Header() {
         {status === "authenticated" && (
           <div className="flex space-x-2">
             <button
-              onClick={() => signIn("google")}
+              onClick={() => handleConnectProvider("google")}
               className={`px-3 py-1 text-sm rounded-md ${
-                session?.provider === "google"
+                connectedProviders.includes("google")
                   ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                   : "bg-blue-50 text-blue-600 hover:bg-blue-100"
               }`}
-              disabled={session?.provider === "google"}
+              disabled={connectedProviders.includes("google") || isConnecting}
             >
-              {session?.provider === "google" ? "Google Connected" : "Connect Google"}
+              {connectedProviders.includes("google") ? "Google Connected" : "Connect Google"}
             </button>
             <button
-              onClick={() => signIn("azure-ad")}
+              onClick={() => handleConnectProvider("azure-ad")}
               className={`px-3 py-1 text-sm rounded-md ${
-                session?.provider === "azure-ad"
+                connectedProviders.includes("azure-ad")
                   ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                   : "bg-blue-50 text-blue-600 hover:bg-blue-100"
               }`}
-              disabled={session?.provider === "azure-ad"}
+              disabled={connectedProviders.includes("azure-ad") || isConnecting}
             >
-              {session?.provider === "azure-ad" ? "Microsoft Connected" : "Connect Microsoft"}
+              {connectedProviders.includes("azure-ad") ? "Microsoft Connected" : "Connect Microsoft"}
             </button>
           </div>
         )}
