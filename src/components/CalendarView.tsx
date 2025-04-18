@@ -45,6 +45,34 @@ const customStyles = `
     min-height: 22px !important;
   }
   
+  /* Microsoft Teams style overlapping meetings */
+  /* First meeting in overlap */
+  .e-schedule .e-vertical-view .e-appointment.e-appointment-overlap:first-child {
+    width: 60% !important;
+    z-index: 1 !important;
+  }
+  
+  /* Second meeting in overlap */
+  .e-schedule .e-vertical-view .e-appointment.e-appointment-overlap:nth-child(2) {
+    width: 60% !important;
+    left: 40% !important;
+    z-index: 2 !important;
+  }
+  
+  /* Third meeting in overlap */
+  .e-schedule .e-vertical-view .e-appointment.e-appointment-overlap:nth-child(3) {
+    width: 60% !important;
+    left: 20% !important;
+    z-index: 3 !important;
+  }
+  
+  /* Any additional meetings */
+  .e-schedule .e-vertical-view .e-appointment.e-appointment-overlap:nth-child(n+4) {
+    width: 60% !important;
+    left: 30% !important;
+    z-index: 4 !important;
+  }
+
   /* Special styling for short events (15min) */
   .e-schedule .e-appointment[data-short-meeting="true"] {
     min-height: 22px !important;
@@ -326,6 +354,7 @@ export default function CalendarView() {
     StartTime?: Date;
     EndTime?: Date;
     Duration?: number;
+    Id?: string;
   }) => {
     const sourceColor = props.CategoryColor || '#5b2e91'; // Default to Microsoft Teams purple
     
@@ -341,62 +370,76 @@ export default function CalendarView() {
         width: '100%', 
         height: isShortMeeting ? '22px' : '100%',
         overflow: 'hidden',
-        borderRadius: '2px'
-      }} data-short-meeting={isShortMeeting}>
+        borderRadius: '2px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
+      }} data-short-meeting={isShortMeeting} data-event-id={props.Id}>
+        {/* Main content container */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: isShortMeeting ? 'center' : 'space-between',
           height: '100%'
         }}>
-          <div>
+          {/* Top section with title and join button */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            width: '100%'
+          }}>
+            {/* Title area */}
             <div style={{ 
               fontWeight: 'bold', 
               fontSize: isShortMeeting ? '12px' : '13px', 
               whiteSpace: 'nowrap', 
               overflow: 'hidden', 
-              textOverflow: 'ellipsis' 
+              textOverflow: 'ellipsis',
+              flex: '1'
             }}>
               {props.Subject}
             </div>
             
-            {/* Only show location for meetings longer than 15 minutes */}
-            {!isShortMeeting && props.Location && (
+            {/* Join button - show for any meeting with a link, including short ones */}
+            {props.MeetingLink && (
               <div style={{ 
-                fontSize: '12px', 
-                whiteSpace: 'nowrap', 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis',
-                marginTop: '2px'
+                marginLeft: '4px',
+                flexShrink: 0, 
+                fontSize: '11px'
               }}>
-                {props.Location}
+                <a 
+                  href={props.MeetingLink} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  style={{ 
+                    color: 'white', 
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    background: 'rgba(255,255,255,0.2)',
+                    padding: '1px 5px',
+                    borderRadius: '3px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '2px' }}>
+                    <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14"></path>
+                    <rect x="3" y="6" width="12" height="12" rx="2" ry="2"></rect>
+                  </svg>
+                  Join
+                </a>
               </div>
             )}
           </div>
           
-          {/* Only show meeting link for meetings longer than 15 minutes */}
-          {!isShortMeeting && props.MeetingLink && (
-            <div style={{ fontSize: '12px', marginTop: 'auto', paddingTop: '4px' }}>
-              <a 
-                href={props.MeetingLink} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                style={{ 
-                  color: 'white', 
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  background: 'rgba(255,255,255,0.2)',
-                  padding: '2px 5px',
-                  borderRadius: '3px'
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '3px' }}>
-                  <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14"></path>
-                  <rect x="3" y="6" width="12" height="12" rx="2" ry="2"></rect>
-                </svg>
-                Join
-              </a>
+          {/* Only show location for meetings longer than 15 minutes */}
+          {!isShortMeeting && props.Location && (
+            <div style={{ 
+              fontSize: '12px', 
+              whiteSpace: 'nowrap', 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis',
+              marginTop: '2px'
+            }}>
+              {props.Location}
             </div>
           )}
         </div>
@@ -491,13 +534,16 @@ export default function CalendarView() {
               ref={scheduleRef}
               height='100%' 
               width='100%'
-              cssClass="calendar-custom"
+              cssClass="calendar-custom teams-calendar"
               eventSettings={{ 
                 dataSource: syncfusionEvents,
                 template: eventTemplate,
                 enableMaxHeight: false,
                 enableIndicator: false,
-                enableTooltip: true
+                enableTooltip: true,
+                allowMultiple: true,
+                enableRecurrence: false,
+                displayName: "overlap-adjustment"
               }}
               selectedDate={new Date()}
               readonly={true}
@@ -510,6 +556,15 @@ export default function CalendarView() {
               showTimeIndicator={false}
               firstDayOfWeek={1} // Start with Monday
               currentView="Week"
+              eventRendered={(args: any) => {
+                if (args && args.element) {
+                  const element = args.element;
+                  if (element.classList.contains('e-appointment-overlap')) {
+                    // Add custom classes for styling
+                    element.classList.add('teams-overlap-event');
+                  }
+                }
+              }}
             >
               <ViewsDirective>
                 <ViewDirective option='Day' />
