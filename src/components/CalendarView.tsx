@@ -39,6 +39,26 @@ const customStyles = `
   .e-schedule .e-appointment {
     box-shadow: none !important;
   }
+
+  /* Remove borders around the entire calendar and its components */
+  .e-schedule, .e-schedule .e-schedule-toolbar, .e-schedule .e-schedule-header, 
+  .e-schedule .e-timeline-month-view, .e-schedule .e-timeline-view, 
+  .e-schedule .e-timeline-year-view, .e-schedule .e-vertical-view,
+  .e-schedule .e-month-view, .e-schedule .e-agenda-view {
+    border: none !important;
+  }
+
+  /* Remove border from schedule cells */
+  .e-schedule .e-work-cells, .e-schedule .e-date-header-wrap, 
+  .e-schedule .e-work-cells, .e-schedule .e-date-header, 
+  .e-schedule .e-timeline-month-cell {
+    border-color: #f1f1f1 !important;
+  }
+
+  /* Remove border around views toolbar */
+  .calendar-custom .e-toolbar {
+    border: none !important;
+  }
 `;
 
 interface StoredAuthToken {
@@ -222,7 +242,11 @@ export default function CalendarView() {
   const syncfusionEvents = convertToSyncfusionEvents(calendarEvents);
 
   // Event template to customize appearance based on provider
-  const eventTemplate = (props) => {
+  const eventTemplate = (props: {
+    Subject: string;
+    CategoryColor?: string;
+    Location?: string;
+  }) => {
     const sourceColor = props.CategoryColor || '#3174ad';
     
     return (
@@ -242,29 +266,9 @@ export default function CalendarView() {
   };
 
   return (
-    <div className="h-screen p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Unified Calendar</h1>
-        <div className="flex space-x-2">
-          <div className="flex items-center">
-            <span className="w-3 h-3 rounded-full bg-[#4285F4] mr-1"></span>
-            <span className="text-sm text-gray-600">Google</span>
-            <span className="ml-1 text-sm text-gray-400">
-              {connectedProviders.includes("google") ? "(Connected)" : "(Not Connected)"}
-            </span>
-          </div>
-          <div className="flex items-center">
-            <span className="w-3 h-3 rounded-full bg-[#00a1f1] mr-1"></span>
-            <span className="text-sm text-gray-600">Microsoft</span>
-            <span className="ml-1 text-sm text-gray-400">
-              {connectedProviders.includes("azure-ad") ? "(Connected)" : "(Not Connected)"}
-            </span>
-          </div>
-        </div>
-      </div>
-
+    <div className="h-screen">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mx-4 mb-2">
           {error}
         </div>
       )}
@@ -274,7 +278,7 @@ export default function CalendarView() {
           <p className="text-lg">Loading your calendar events...</p>
         </div>
       ) : (
-        <div className="h-[calc(100vh-120px)]">
+        <div className="h-[calc(100vh-40px)]">
           {calendarEvents.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-lg text-gray-500">No events found in your calendars</p>
