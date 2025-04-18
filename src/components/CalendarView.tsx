@@ -1,52 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-import { format, parse, startOfWeek, getDay } from "date-fns";
-import { enUS } from "date-fns/locale";
 import { useSession } from "next-auth/react";
 import { CalendarEvent, getGoogleCalendarEvents, getMicrosoftCalendarEvents, mergeCalendarEvents } from "@/services/calendar-service";
+import { ScheduleComponent, Day, Week, WorkWeek, Month, Agenda, Inject, ViewsDirective, ViewDirective } from '@syncfusion/ej2-react-schedule';
+import { DateTimePickerComponent } from '@syncfusion/ej2-react-calendars';
+import { registerLicense } from '@syncfusion/ej2-base';
+// Required CSS imports for Syncfusion
+import '@syncfusion/ej2-base/styles/material.css';
+import '@syncfusion/ej2-buttons/styles/material.css';
+import '@syncfusion/ej2-calendars/styles/material.css';
+import '@syncfusion/ej2-dropdowns/styles/material.css';
+import '@syncfusion/ej2-inputs/styles/material.css';
+import '@syncfusion/ej2-lists/styles/material.css';
+import '@syncfusion/ej2-navigations/styles/material.css';
+import '@syncfusion/ej2-popups/styles/material.css';
+import '@syncfusion/ej2-splitbuttons/styles/material.css';
+import '@syncfusion/ej2-react-schedule/styles/material.css';
 
-const locales = {
-  'en-US': enUS,
-};
-
-// Setup the localizer by providing the date-fns functions
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
-
-const eventStyleGetter = (event: CalendarEvent) => {
-  let backgroundColor = "#3174ad"; // Default blue
-  
-  if (event.source === "google") {
-    backgroundColor = "#4285F4"; // Google blue
-  } else if (event.source === "microsoft") {
-    backgroundColor = "#00a1f1"; // Microsoft blue
-  }
-  
-  return {
-    style: {
-      backgroundColor,
-      borderRadius: "5px",
-      opacity: 0.8,
-      color: "white",
-      border: "0px",
-      display: "block",
-    },
-  };
-};
+// Register Syncfusion license
+// Get license key from environment variable
+registerLicense(process.env.NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY || '');
 
 interface StoredAuthToken {
   provider: string;
   accessToken: string;
   refreshToken?: string;
 }
+
+// Convert CalendarEvent to Syncfusion event data format
+const convertToSyncfusionEvents = (events: CalendarEvent[]) => {
+  return events.map(event => ({
+    Id: event.id,
+    Subject: event.title,
+    StartTime: event.start,
+    EndTime: event.end,
+    Location: event.location || '',
+    Description: event.description || '',
+    IsAllDay: event.allDay || false,
+    CategoryColor: event.source === 'google' ? '#4285F4' : '#00a1f1'
+  }));
+};
 
 export default function CalendarView() {
   const { data: session } = useSession();
@@ -192,6 +186,21 @@ export default function CalendarView() {
     fetchEvents();
   }, [session]);
 
+  // Convert our existing events to Syncfusion format
+  const syncfusionEvents = convertToSyncfusionEvents(calendarEvents);
+
+  // Event template to customize appearance based on provider
+  const eventTemplate = (props: any) => {
+    const sourceColor = props.CategoryColor || '#3174ad';
+    
+    return (
+      <div className="p-1" style={{ backgroundColor: sourceColor, borderRadius: '4px', color: 'white' }}>
+        <div className="font-semibold">{props.Subject}</div>
+        {props.Location && <div className="text-xs">{props.Location}</div>}
+      </div>
+    );
+  };
+
   return (
     <div className="h-screen p-4">
       <div className="flex items-center justify-between mb-4">
@@ -231,15 +240,24 @@ export default function CalendarView() {
               <p className="text-lg text-gray-500">No events found in your calendars</p>
             </div>
           ) : (
-            <Calendar
-              localizer={localizer}
-              events={calendarEvents}
-              startAccessor="start"
-              endAccessor="end"
-              style={{ height: "100%" }}
-              eventPropGetter={eventStyleGetter}
-              views={["month", "week", "day", "agenda"]}
-            />
+            <ScheduleComponent 
+              height='100%' 
+              eventSettings={{ 
+                dataSource: syncfusionEvents,
+                template: eventTemplate
+              }}
+              selectedDate={new Date()}
+              readonly={true}
+            >
+              <ViewsDirective>
+                <ViewDirective option='Day' />
+                <ViewDirective option='Week' />
+                <ViewDirective option='WorkWeek' />
+                <ViewDirective option='Month' />
+                <ViewDirective option='Agenda' />
+              </ViewsDirective>
+              <Inject services={[Day, Week, WorkWeek, Month, Agenda]} />
+            </ScheduleComponent>
           )}
         </div>
       )}

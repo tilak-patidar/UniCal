@@ -11,6 +11,8 @@
   "dependencies": {
     "@headlessui/react": "^2.2.2",
     "@heroicons/react": "^2.2.0",
+    "@syncfusion/ej2-react-calendars": "^29.1.35",
+    "@syncfusion/ej2-react-schedule": "^29.1.38",
     "axios": "^1.8.4",
     "date-fns": "^4.1.0",
     "next": "15.3.1",
