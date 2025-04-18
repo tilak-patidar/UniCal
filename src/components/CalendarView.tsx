@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { CalendarEvent, getGoogleCalendarEvents, getMicrosoftCalendarEvents, mergeCalendarEvents } from "@/services/calendar-service";
-import { ScheduleComponent, Day, Week, WorkWeek, Month, Agenda, Inject, ViewsDirective, ViewDirective } from '@syncfusion/ej2-react-schedule';
+import { ScheduleComponent, Day, Week, WorkWeek, Month, Agenda, Inject, ViewsDirective, ViewDirective, PopupOpenEventArgs, QuickInfoTemplatesModel } from '@syncfusion/ej2-react-schedule';
 import { registerLicense } from '@syncfusion/ej2-base';
 // Required CSS imports for Syncfusion
 import '@syncfusion/ej2-base/styles/material.css';
@@ -59,6 +59,39 @@ const customStyles = `
   .calendar-custom .e-toolbar {
     border: none !important;
   }
+  
+  /* Style the quick info popup */
+  .e-quick-popup-wrapper .e-event-content {
+    padding: 10px !important;
+  }
+  
+  /* Make links in popup more visible */
+  .e-quick-popup-wrapper .e-event-content a {
+    color: #1976d2 !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+  }
+  
+  .e-quick-popup-wrapper .e-event-content a:hover {
+    text-decoration: underline !important;
+  }
+  
+  /* Improved meeting link style */
+  .e-event-meeting-link {
+    margin-top: 8px !important;
+    padding: 5px 0 !important;
+  }
+  
+  .e-event-meeting-link a {
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  /* Override popup width */
+  .e-quick-popup-wrapper {
+    max-width: 400px !important;
+    width: 100% !important;
+  }
 `;
 
 interface StoredAuthToken {
@@ -77,7 +110,8 @@ const convertToSyncfusionEvents = (events: CalendarEvent[]) => {
     Location: event.location || '',
     Description: event.description || '',
     IsAllDay: event.allDay || false,
-    CategoryColor: event.source === 'google' ? '#4285F4' : '#00a1f1'
+    CategoryColor: event.source === 'google' ? '#4285F4' : '#00a1f1',
+    MeetingLink: event.meetingLink || ''
   }));
 };
 
@@ -246,6 +280,7 @@ export default function CalendarView() {
     Subject: string;
     CategoryColor?: string;
     Location?: string;
+    MeetingLink?: string;
   }) => {
     const sourceColor = props.CategoryColor || '#3174ad';
     
@@ -261,8 +296,78 @@ export default function CalendarView() {
       }}>
         <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{props.Subject}</div>
         {props.Location && <div style={{ fontSize: '10px' }}>{props.Location}</div>}
+        {props.MeetingLink && <div style={{ fontSize: '10px', marginTop: '2px' }}>
+          <a href={props.MeetingLink} target="_blank" rel="noopener noreferrer" 
+             style={{ color: 'white', textDecoration: 'underline' }}>
+            Join Meeting
+          </a>
+        </div>}
       </div>
     );
+  };
+
+  // Custom popup template to display meeting links
+  const quickInfoTemplates: QuickInfoTemplatesModel = {
+    header: (props: any) => {
+      return (
+        <div className="e-header-icon-wrapper">
+          <div className="e-header-icon e-close" title="Close"></div>
+          <div className="e-subject e-text-ellipsis" title={props.Subject}>{props.Subject}</div>
+        </div>
+      );
+    },
+    content: (props: any) => {
+      return (
+        <div className="e-event-content">
+          <div className="e-event-time flex items-center mt-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {new Date(props.StartTime).toLocaleString()} - {new Date(props.EndTime).toLocaleString()}
+          </div>
+          
+          {props.Location && (
+            <div className="e-event-location flex items-center mt-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span>{props.Location}</span>
+            </div>
+          )}
+          
+          {props.Description && (
+            <div className="e-event-description mt-2">
+              <div className="font-medium">Description:</div>
+              <div>{props.Description}</div>
+            </div>
+          )}
+          
+          {props.MeetingLink && (
+            <div className="e-event-meeting-link flex items-center mt-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <a href={props.MeetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                Join Meeting
+              </a>
+            </div>
+          )}
+        </div>
+      );
+    },
+    footer: () => {
+      return <div></div>; // Empty footer
+    }
+  };
+
+  // Handle popup opening
+  const onPopupOpen = (args: PopupOpenEventArgs) => {
+    if (args.type === 'QuickInfo' && args.data && !args.data.elementType) {
+      // Only proceed for event cells, not empty date cells
+      const eventObj = args.data;
+      // Can manipulate popup content here if needed
+    }
   };
 
   return (
@@ -295,6 +400,8 @@ export default function CalendarView() {
               }}
               selectedDate={new Date()}
               readonly={true}
+              quickInfoTemplates={quickInfoTemplates}
+              popupOpen={onPopupOpen}
             >
               <ViewsDirective>
                 <ViewDirective option='Day' />

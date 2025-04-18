@@ -9,6 +9,7 @@ export interface CalendarEvent {
   description?: string;
   source: "google" | "microsoft";
   allDay?: boolean;
+  meetingLink?: string;
 }
 
 interface GoogleCalendarEvent {
@@ -24,6 +25,21 @@ interface GoogleCalendarEvent {
   };
   location?: string;
   description?: string;
+  hangoutLink?: string;
+  conferenceData?: {
+    conferenceId?: string;
+    conferenceSolution?: {
+      key?: {
+        type?: string;
+      };
+      name?: string;
+    };
+    entryPoints?: Array<{
+      entryPointType?: string;
+      uri?: string;
+      label?: string;
+    }>;
+  };
 }
 
 interface MicrosoftCalendarEvent {
@@ -40,6 +56,10 @@ interface MicrosoftCalendarEvent {
   };
   bodyPreview?: string;
   isAllDay?: boolean;
+  onlineMeeting?: {
+    joinUrl?: string;
+  };
+  onlineMeetingUrl?: string;
 }
 
 export async function getGoogleCalendarEvents(accessToken: string): Promise<CalendarEvent[]> {
@@ -60,7 +80,8 @@ export async function getGoogleCalendarEvents(accessToken: string): Promise<Cale
           timeMax: timeMax.toISOString(),
           singleEvents: true,
           orderBy: "startTime",
-          maxResults: 500 // Increased to 500
+          maxResults: 500, // Increased to 500
+          conferenceDataVersion: 1 // Request conference data
         },
       }
     );
@@ -76,6 +97,7 @@ export async function getGoogleCalendarEvents(accessToken: string): Promise<Cale
       description: event.description,
       source: "google" as const,
       allDay: Boolean(event.start.date),
+      meetingLink: event.hangoutLink || event.conferenceData?.entryPoints?.find(entryPoint => entryPoint.entryPointType === 'video')?.uri
     }));
   } catch (error) {
     console.error("Error fetching Google Calendar events", error);
@@ -107,7 +129,7 @@ export async function getMicrosoftCalendarEvents(accessToken: string): Promise<C
         params: {
           startDateTime: startDateTime.toISOString(),
           endDateTime: endDateTime.toISOString(),
-          $select: "id,subject,start,end,location,bodyPreview,isAllDay",
+          $select: "id,subject,start,end,location,bodyPreview,isAllDay,onlineMeeting,onlineMeetingUrl",
           $orderby: "start/dateTime",
           $top: 500 // Increased to 500
         },
@@ -135,6 +157,7 @@ export async function getMicrosoftCalendarEvents(accessToken: string): Promise<C
         description: event.bodyPreview,
         source: "microsoft" as const,
         allDay: event.isAllDay,
+        meetingLink: event.onlineMeeting?.joinUrl || event.onlineMeetingUrl
       };
     });
     
@@ -161,4 +184,4 @@ export function mergeCalendarEvents(
   return [...googleEvents, ...microsoftEvents].sort(
     (a, b) => a.start.getTime() - b.start.getTime()
   );
-} 
+}
