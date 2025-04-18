@@ -1,10 +1,33 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
-import { JWT } from "next-auth/jwt";
-import { Session } from "next-auth";
 
-export const authOptions = {
+// Define session types with custom properties in the JWT and Session
+declare module "next-auth/jwt" {
+  interface JWT {
+    accessToken?: string;
+    refreshToken?: string;
+    provider?: string;
+    expiresAt?: number;
+  }
+}
+
+declare module "next-auth" {
+  interface Session {
+    accessToken?: string;
+    refreshToken?: string;
+    provider?: string;
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    }
+  }
+}
+
+// Use the simplest possible configuration to avoid type errors
+const handler = NextAuth({
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -30,8 +53,7 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, account }: { token: JWT; account: any }) {
-      // Persist the OAuth access_token and refresh_token to the token right after signin
+    jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
@@ -40,13 +62,9 @@ export const authOptions = {
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
-      // Send properties to the client
-      // @ts-ignore - adding custom properties to session
+    session({ session, token }) {
       session.accessToken = token.accessToken;
-      // @ts-ignore - adding custom properties to session
       session.refreshToken = token.refreshToken;
-      // @ts-ignore - adding custom properties to session
       session.provider = token.provider;
       return session;
     },
@@ -55,7 +73,6 @@ export const authOptions = {
     signIn: "/auth/signin",
   },
   secret: process.env.NEXTAUTH_SECRET,
-};
+});
 
-const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST }; 

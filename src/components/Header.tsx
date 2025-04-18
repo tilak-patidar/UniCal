@@ -4,6 +4,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { Fragment, useState, useEffect } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import { UserIcon } from "@heroicons/react/24/outline";
+import Image from "next/image";
 
 export default function Header() {
   const { data: session, status } = useSession();
@@ -36,7 +37,6 @@ export default function Header() {
   useEffect(() => {
     if (typeof window !== "undefined" && session) {
       const storedProviders = localStorage.getItem("connectedProviders");
-      const currentProvider = localStorage.getItem("currentProvider");
       
       if (storedProviders) {
         try {
@@ -101,10 +101,12 @@ export default function Header() {
             <div>
               <Menu.Button className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200">
                 {session?.user?.image ? (
-                  <img
+                  <Image
                     src={session.user.image}
                     alt={session.user.name || "User"}
-                    className="w-8 h-8 rounded-full"
+                    className="rounded-full"
+                    width={32}
+                    height={32}
                   />
                 ) : (
                   <UserIcon className="w-5 h-5 text-gray-700" />

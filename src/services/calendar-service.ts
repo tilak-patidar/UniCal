@@ -11,6 +11,37 @@ export interface CalendarEvent {
   allDay?: boolean;
 }
 
+interface GoogleCalendarEvent {
+  id: string;
+  summary?: string;
+  start: {
+    dateTime?: string;
+    date?: string;
+  };
+  end: {
+    dateTime?: string;
+    date?: string;
+  };
+  location?: string;
+  description?: string;
+}
+
+interface MicrosoftCalendarEvent {
+  id: string;
+  subject?: string;
+  start: {
+    dateTime: string;
+  };
+  end: {
+    dateTime: string;
+  };
+  location?: {
+    displayName?: string;
+  };
+  bodyPreview?: string;
+  isAllDay?: boolean;
+}
+
 export async function getGoogleCalendarEvents(accessToken: string): Promise<CalendarEvent[]> {
   const timeMin = new Date();
   timeMin.setMonth(timeMin.getMonth() - 1); // Get events from 1 month ago
@@ -33,11 +64,11 @@ export async function getGoogleCalendarEvents(accessToken: string): Promise<Cale
       }
     );
 
-    return response.data.items.map((event: any) => ({
+    return response.data.items.map((event: GoogleCalendarEvent) => ({
       id: event.id,
       title: event.summary || "No Title",
-      start: new Date(event.start.dateTime || event.start.date),
-      end: new Date(event.end.dateTime || event.end.date),
+      start: new Date(event.start.dateTime || event.start.date || ""),
+      end: new Date(event.end.dateTime || event.end.date || ""),
       location: event.location,
       description: event.description,
       source: "google" as const,
@@ -82,7 +113,7 @@ export async function getMicrosoftCalendarEvents(accessToken: string): Promise<C
       return [];
     }
 
-    return response.data.value.map((event: any) => {
+    return response.data.value.map((event: MicrosoftCalendarEvent) => {
       // Convert Microsoft's date format to a JavaScript Date object
       const startDate = new Date(event.start.dateTime + (event.start.dateTime.includes('Z') ? '' : 'Z'));
       const endDate = new Date(event.end.dateTime + (event.end.dateTime.includes('Z') ? '' : 'Z'));

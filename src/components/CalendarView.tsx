@@ -64,7 +64,7 @@ export default function CalendarView() {
       
       try {
         // Get stored tokens from localStorage if they exist
-        let allTokens: StoredAuthToken[] = [];
+        const allTokens: StoredAuthToken[] = [];
         const storedProviders = localStorage.getItem("connectedProviders");
         
         // Add current session to tokens list
