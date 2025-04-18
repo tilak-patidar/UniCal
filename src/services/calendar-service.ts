@@ -44,7 +44,7 @@ interface MicrosoftCalendarEvent {
 
 export async function getGoogleCalendarEvents(accessToken: string): Promise<CalendarEvent[]> {
   const timeMin = new Date();
-  timeMin.setMonth(timeMin.getMonth() - 1); // Get events from 1 month ago
+  timeMin.setMonth(timeMin.getMonth() - 2); // Get events from 2 months ago
   const timeMax = new Date();
   timeMax.setMonth(timeMax.getMonth() + 3); // Get events for the next 3 months
 
@@ -60,10 +60,13 @@ export async function getGoogleCalendarEvents(accessToken: string): Promise<Cale
           timeMax: timeMax.toISOString(),
           singleEvents: true,
           orderBy: "startTime",
+          maxResults: 500 // Increased to 500
         },
       }
     );
 
+    console.log(`Retrieved ${response.data.items?.length || 0} Google events`);
+    
     return response.data.items.map((event: GoogleCalendarEvent) => ({
       id: event.id,
       title: event.summary || "No Title",
@@ -81,13 +84,18 @@ export async function getGoogleCalendarEvents(accessToken: string): Promise<Cale
 }
 
 export async function getMicrosoftCalendarEvents(accessToken: string): Promise<CalendarEvent[]> {
+  // Set start date to 2 months ago
   const startDateTime = new Date();
-  startDateTime.setMonth(startDateTime.getMonth() - 1);
+  startDateTime.setMonth(startDateTime.getMonth() - 2);
+  startDateTime.setHours(0, 0, 0, 0);
+  
+  // Set end date to 3 months from now
   const endDateTime = new Date();
   endDateTime.setMonth(endDateTime.getMonth() + 3);
 
   try {
     console.log("Fetching Microsoft Calendar events with token:", accessToken.substring(0, 10) + "...");
+    console.log("Fetching events from", startDateTime.toISOString(), "to", endDateTime.toISOString());
     
     const response = await axios.get(
       "https://graph.microsoft.com/v1.0/me/calendarView",
@@ -101,19 +109,19 @@ export async function getMicrosoftCalendarEvents(accessToken: string): Promise<C
           endDateTime: endDateTime.toISOString(),
           $select: "id,subject,start,end,location,bodyPreview,isAllDay",
           $orderby: "start/dateTime",
-          $top: 100
+          $top: 500 // Increased to 500
         },
       }
     );
 
-    console.log("Microsoft response:", JSON.stringify(response.data, null, 2));
+    console.log(`Microsoft response contains ${response.data.value?.length || 0} events`);
 
     if (!response.data.value || !Array.isArray(response.data.value)) {
       console.error("Invalid Microsoft Calendar response structure", response.data);
       return [];
     }
 
-    return response.data.value.map((event: MicrosoftCalendarEvent) => {
+    const events = response.data.value.map((event: MicrosoftCalendarEvent) => {
       // Convert Microsoft's date format to a JavaScript Date object
       const startDate = new Date(event.start.dateTime + (event.start.dateTime.includes('Z') ? '' : 'Z'));
       const endDate = new Date(event.end.dateTime + (event.end.dateTime.includes('Z') ? '' : 'Z'));
@@ -129,6 +137,13 @@ export async function getMicrosoftCalendarEvents(accessToken: string): Promise<C
         allDay: event.isAllDay,
       };
     });
+    
+    console.log(`Processed ${events.length} Microsoft events with date range:`, 
+                events.length > 0 ? 
+                `${events[0].start.toISOString()} to ${events[events.length-1].end.toISOString()}` : 
+                "No events");
+                
+    return events;
   } catch (error) {
     console.error("Error fetching Microsoft Calendar events", error);
     if (axios.isAxiosError(error)) {
