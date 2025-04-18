@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { CalendarEvent, getGoogleCalendarEvents, getMicrosoftCalendarEvents, mergeCalendarEvents } from "@/services/calendar-service";
 import { ScheduleComponent, Day, Week, WorkWeek, Month, Agenda, Inject, ViewsDirective, ViewDirective } from '@syncfusion/ej2-react-schedule';
@@ -21,6 +21,26 @@ import '@syncfusion/ej2-react-schedule/styles/material.css';
 // Register Syncfusion license
 // Get license key from environment variable
 registerLicense(process.env.NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY || '');
+
+// Custom CSS to override Syncfusion styles
+const customStyles = `
+  /* Remove background color that extends beyond event content */
+  .e-schedule .e-appointment {
+    background-color: transparent !important;
+    border: none !important;
+  }
+  
+  /* Ensure the appointment content width only extends as needed */
+  .e-schedule .e-appointment-details {
+    padding: 0 !important;
+    background-color: transparent !important;
+  }
+  
+  /* Remove any borders and shadows */
+  .e-schedule .e-appointment {
+    box-shadow: none !important;
+  }
+`;
 
 interface StoredAuthToken {
   provider: string;
@@ -48,6 +68,19 @@ export default function CalendarView() {
   const [isLoading, setIsLoading] = useState(true);
   const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const scheduleRef = useRef<ScheduleComponent>(null);
+
+  useEffect(() => {
+    // Add custom styles for Syncfusion scheduler
+    const styleElement = document.createElement('style');
+    styleElement.textContent = customStyles;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      // Clean up styles when component unmounts
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   useEffect(() => {
     if (!session?.accessToken) return;
@@ -194,9 +227,17 @@ export default function CalendarView() {
     const sourceColor = props.CategoryColor || '#3174ad';
     
     return (
-      <div className="p-1" style={{ backgroundColor: sourceColor, borderRadius: '4px', color: 'white' }}>
-        <div className="font-semibold">{props.Subject}</div>
-        {props.Location && <div className="text-xs">{props.Location}</div>}
+      <div style={{ 
+        backgroundColor: sourceColor, 
+        borderRadius: '3px', 
+        color: 'white', 
+        padding: '2px 5px',
+        width: 'fit-content', 
+        minWidth: '120px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{props.Subject}</div>
+        {props.Location && <div style={{ fontSize: '10px' }}>{props.Location}</div>}
       </div>
     );
   };
@@ -241,10 +282,13 @@ export default function CalendarView() {
             </div>
           ) : (
             <ScheduleComponent 
+              ref={scheduleRef}
               height='100%' 
+              cssClass="calendar-custom"
               eventSettings={{ 
                 dataSource: syncfusionEvents,
-                template: eventTemplate
+                template: eventTemplate,
+                enableMaxHeight: true
               }}
               selectedDate={new Date()}
               readonly={true}
