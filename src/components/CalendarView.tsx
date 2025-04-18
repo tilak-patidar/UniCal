@@ -27,17 +27,41 @@ const customStyles = `
   .e-schedule .e-appointment {
     background-color: transparent !important;
     border: none !important;
+    width: 100% !important;
   }
   
-  /* Ensure the appointment content width only extends as needed */
+  /* Ensure the appointment content width extends fully */
   .e-schedule .e-appointment-details {
     padding: 0 !important;
     background-color: transparent !important;
+    width: 100% !important;
+  }
+  
+  /* Fix for Day/Week/WorkWeek view to ensure full width */
+  .e-schedule .e-vertical-view .e-appointment {
+    width: calc(100% - 2px) !important;
+    left: 1px !important;
+  }
+  
+  /* Ensure month view event width is also full */
+  .e-schedule .e-month-view .e-appointment {
+    width: calc(100% - 2px) !important;
+    left: 1px !important;
   }
   
   /* Remove any borders and shadows */
   .e-schedule .e-appointment {
     box-shadow: none !important;
+  }
+
+  /* Force event content to take full width */
+  .e-schedule .e-appointment .e-appointment-details .e-appointment-wrapper {
+    width: 100% !important;
+  }
+  
+  /* Event template container styles */
+  .event-template-container {
+    width: 100% !important;
   }
 
   /* Remove borders around the entire calendar and its components */
@@ -285,23 +309,34 @@ export default function CalendarView() {
     const sourceColor = props.CategoryColor || '#3174ad';
     
     return (
-      <div style={{ 
+      <div className="event-template-container" style={{ 
         backgroundColor: sourceColor, 
         borderRadius: '3px', 
         color: 'white', 
-        padding: '2px 5px',
-        width: 'fit-content', 
-        minWidth: '120px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+        padding: '3px 6px',
+        width: '100%', 
+        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-        <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{props.Subject}</div>
-        {props.Location && <div style={{ fontSize: '10px' }}>{props.Location}</div>}
-        {props.MeetingLink && <div style={{ fontSize: '10px', marginTop: '2px' }}>
-          <a href={props.MeetingLink} target="_blank" rel="noopener noreferrer" 
-             style={{ color: 'white', textDecoration: 'underline' }}>
-            Join Meeting
-          </a>
-        </div>}
+        <div style={{ fontWeight: 'bold', fontSize: '12px', width: '100%' }}>{props.Subject}</div>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          {props.Location && <div style={{ fontSize: '10px', flex: '1', marginRight: '5px' }}>{props.Location}</div>}
+          
+          {props.MeetingLink && 
+            <div style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>
+              <a href={props.MeetingLink} target="_blank" rel="noopener noreferrer" 
+                style={{ color: 'white', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '2px' }}>
+                  <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14"></path>
+                  <rect x="3" y="6" width="12" height="12" rx="2" ry="2"></rect>
+                </svg>
+                Join
+              </a>
+            </div>
+          }
+        </div>
       </div>
     );
   };
@@ -396,7 +431,8 @@ export default function CalendarView() {
               eventSettings={{ 
                 dataSource: syncfusionEvents,
                 template: eventTemplate,
-                enableMaxHeight: true
+                enableMaxHeight: true,
+                enableIndicator: false
               }}
               selectedDate={new Date()}
               readonly={true}
