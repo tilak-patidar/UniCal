@@ -80,7 +80,7 @@ export default function CalendarView() {
         
         if (storedProviders) {
           try {
-            const providers = JSON.parse(storedProviders);
+            const providers = JSON.parse(storedProviders) as string[];
             
             // Add current session provider if it's not already in the list
             if (session.provider && !providers.includes(session.provider)) {
@@ -90,21 +90,64 @@ export default function CalendarView() {
             
             setConnectedProviders(providers);
             
-            // Check if we have stored tokens for other providers
-            const currentProvider = localStorage.getItem("currentProvider");
-            const storedAccessToken = localStorage.getItem("currentAccessToken");
-            
-            if (currentProvider && 
-                currentProvider !== session.provider && 
-                storedAccessToken && 
-                providers.includes(currentProvider)) {
-              console.log("Found stored token for:", currentProvider);
-              allTokens.push({
-                provider: currentProvider,
-                accessToken: storedAccessToken,
-                refreshToken: localStorage.getItem("currentRefreshToken") || undefined
-              });
+            // Check if Microsoft is in the providers list but not the current session
+            if (providers.includes("azure-ad") && session.provider !== "azure-ad") {
+              const msAccessToken = localStorage.getItem("msAccessToken");
+              if (msAccessToken) {
+                console.log("Found stored token for Microsoft");
+                allTokens.push({
+                  provider: "azure-ad",
+                  accessToken: msAccessToken,
+                  refreshToken: localStorage.getItem("msRefreshToken") || undefined
+                });
+              } else {
+                // For backward compatibility, check the older format
+                const storedAccessToken = localStorage.getItem("currentAccessToken");
+                const currentProvider = localStorage.getItem("currentProvider");
+                if (currentProvider === "azure-ad" && storedAccessToken) {
+                  console.log("Found stored token for Microsoft (old format)");
+                  allTokens.push({
+                    provider: "azure-ad",
+                    accessToken: storedAccessToken,
+                    refreshToken: localStorage.getItem("currentRefreshToken") || undefined
+                  });
+                  
+                  // Migrate to new format
+                  localStorage.setItem("msAccessToken", storedAccessToken);
+                  localStorage.setItem("msRefreshToken", localStorage.getItem("currentRefreshToken") || "");
+                }
+              }
             }
+            
+            // Check if Google is in the providers list but not the current session
+            if (providers.includes("google") && session.provider !== "google") {
+              const googleAccessToken = localStorage.getItem("googleAccessToken");
+              if (googleAccessToken) {
+                console.log("Found stored token for Google");
+                allTokens.push({
+                  provider: "google",
+                  accessToken: googleAccessToken,
+                  refreshToken: localStorage.getItem("googleRefreshToken") || undefined
+                });
+              } else {
+                // For backward compatibility, check the older format
+                const storedAccessToken = localStorage.getItem("currentAccessToken");
+                const currentProvider = localStorage.getItem("currentProvider");
+                if (currentProvider === "google" && storedAccessToken) {
+                  console.log("Found stored token for Google (old format)");
+                  allTokens.push({
+                    provider: "google",
+                    accessToken: storedAccessToken,
+                    refreshToken: localStorage.getItem("currentRefreshToken") || undefined
+                  });
+                  
+                  // Migrate to new format
+                  localStorage.setItem("googleAccessToken", storedAccessToken);
+                  localStorage.setItem("googleRefreshToken", localStorage.getItem("currentRefreshToken") || "");
+                }
+              }
+            }
+            
           } catch (e) {
             console.error("Error parsing stored providers", e);
             setConnectedProviders(session.provider ? [session.provider] : []);

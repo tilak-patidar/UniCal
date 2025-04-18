@@ -21,7 +21,16 @@ export default function Header() {
     
     setIsConnecting(true);
     
-    // We'll use localStorage to store our current provider before connecting a new one
+    // Store the current session's token with a provider-specific key
+    if (session.provider === "google") {
+      localStorage.setItem("googleAccessToken", session.accessToken || "");
+      localStorage.setItem("googleRefreshToken", session.refreshToken || "");
+    } else if (session.provider === "azure-ad") {
+      localStorage.setItem("msAccessToken", session.accessToken || "");
+      localStorage.setItem("msRefreshToken", session.refreshToken || "");
+    }
+    
+    // For backward compatibility, also store in the old format
     localStorage.setItem("currentProvider", session.provider || "");
     localStorage.setItem("currentAccessToken", session.accessToken || "");
     localStorage.setItem("currentRefreshToken", session.refreshToken || "");
@@ -41,6 +50,16 @@ export default function Header() {
       if (storedProviders) {
         try {
           const providers = JSON.parse(storedProviders);
+          
+          // If the user is signing in with a new provider, store the tokens for their previous provider
+          if (session.provider === "google") {
+            localStorage.setItem("googleAccessToken", session.accessToken || "");
+            localStorage.setItem("googleRefreshToken", session.refreshToken || "");
+          } else if (session.provider === "azure-ad") {
+            localStorage.setItem("msAccessToken", session.accessToken || "");
+            localStorage.setItem("msRefreshToken", session.refreshToken || "");
+          }
+          
           if (!providers.includes(session.provider) && session.provider) {
             // Add new provider to the list if it's not already there
             const updatedProviders = [...providers, session.provider];
@@ -53,8 +72,18 @@ export default function Header() {
           console.error("Error parsing stored providers", e);
         }
       } else if (session.provider) {
+        // First time signing in
         setConnectedProviders([session.provider]);
         localStorage.setItem("connectedProviders", JSON.stringify([session.provider]));
+        
+        // Store tokens for the current provider
+        if (session.provider === "google") {
+          localStorage.setItem("googleAccessToken", session.accessToken || "");
+          localStorage.setItem("googleRefreshToken", session.refreshToken || "");
+        } else if (session.provider === "azure-ad") {
+          localStorage.setItem("msAccessToken", session.accessToken || "");
+          localStorage.setItem("msRefreshToken", session.refreshToken || "");
+        }
       }
       
       setIsConnecting(false);
