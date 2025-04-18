@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { CalendarEvent, getGoogleCalendarEvents, getMicrosoftCalendarEvents, mergeCalendarEvents } from "@/services/calendar-service";
-import { ScheduleComponent, Day, Week, WorkWeek, Month, Agenda, Inject, ViewsDirective, ViewDirective, PopupOpenEventArgs, QuickInfoTemplatesModel } from '@syncfusion/ej2-react-schedule';
+import { ScheduleComponent, Day, Week, WorkWeek, Month, Agenda, Inject, ViewsDirective, ViewDirective, PopupOpenEventArgs, QuickInfoTemplatesModel, TimeScaleModel } from '@syncfusion/ej2-react-schedule';
 import { registerLicense } from '@syncfusion/ej2-base';
 // Required CSS imports for Syncfusion
 import '@syncfusion/ej2-base/styles/material.css';
@@ -23,7 +23,7 @@ registerLicense(process.env.NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY || '');
 
 // Custom CSS to override Syncfusion styles
 const customStyles = `
-  /* Remove background color that extends beyond event content */
+  /* Base appointment styles */
   .e-schedule .e-appointment {
     background-color: transparent !important;
     border: none !important;
@@ -35,33 +35,50 @@ const customStyles = `
     padding: 0 !important;
     background-color: transparent !important;
     width: 100% !important;
+    height: 100% !important;
   }
   
-  /* Fix for Day/Week/WorkWeek view to ensure full width */
+  /* Fix for Day/Week/WorkWeek view - make sure events take proper height */
   .e-schedule .e-vertical-view .e-appointment {
     width: calc(100% - 2px) !important;
     left: 1px !important;
+    min-height: 22px !important;
   }
   
-  /* Ensure month view event width is also full */
-  .e-schedule .e-month-view .e-appointment {
-    width: calc(100% - 2px) !important;
-    left: 1px !important;
+  /* Special styling for short events (15min) */
+  .e-schedule .e-appointment[data-short-meeting="true"] {
+    min-height: 22px !important;
+    max-height: 22px !important;
   }
   
+  /* Time indicator */
+  .e-schedule .e-time-cells {
+    color: #666 !important;
+    font-size: 12px !important;
+    padding-right: 6px !important;
+    text-align: right !important;
+  }
+
   /* Remove any borders and shadows */
   .e-schedule .e-appointment {
     box-shadow: none !important;
   }
 
-  /* Force event content to take full width */
-  .e-schedule .e-appointment .e-appointment-details .e-appointment-wrapper {
-    width: 100% !important;
-  }
-  
   /* Event template container styles */
   .event-template-container {
     width: 100% !important;
+    height: 100% !important;
+    min-height: 22px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  /* Short event container styles */
+  .short-event-container {
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+    overflow: hidden !important;
   }
 
   /* Remove borders around the entire calendar and its components */
@@ -76,12 +93,7 @@ const customStyles = `
   .e-schedule .e-work-cells, .e-schedule .e-date-header-wrap, 
   .e-schedule .e-work-cells, .e-schedule .e-date-header, 
   .e-schedule .e-timeline-month-cell {
-    border-color: #f1f1f1 !important;
-  }
-
-  /* Remove border around views toolbar */
-  .calendar-custom .e-toolbar {
-    border: none !important;
+    border-color: #EDEBE9 !important;
   }
   
   /* Style the quick info popup */
@@ -126,17 +138,23 @@ interface StoredAuthToken {
 
 // Convert CalendarEvent to Syncfusion event data format
 const convertToSyncfusionEvents = (events: CalendarEvent[]) => {
-  return events.map(event => ({
-    Id: event.id,
-    Subject: event.title,
-    StartTime: event.start,
-    EndTime: event.end,
-    Location: event.location || '',
-    Description: event.description || '',
-    IsAllDay: event.allDay || false,
-    CategoryColor: event.source === 'google' ? '#4285F4' : '#00a1f1',
-    MeetingLink: event.meetingLink || ''
-  }));
+  return events.map(event => {
+    // Calculate duration in milliseconds
+    const duration = event.end.getTime() - event.start.getTime();
+    
+    return {
+      Id: event.id,
+      Subject: event.title,
+      StartTime: event.start,
+      EndTime: event.end,
+      Location: event.location || '',
+      Description: event.description || '',
+      IsAllDay: event.allDay || false,
+      CategoryColor: event.source === 'google' ? '#4285F4' : '#5b2e91', // Microsoft Teams purple for MS events
+      MeetingLink: event.meetingLink || '',
+      Duration: duration
+    };
+  });
 };
 
 export default function CalendarView() {
@@ -305,37 +323,82 @@ export default function CalendarView() {
     CategoryColor?: string;
     Location?: string;
     MeetingLink?: string;
+    StartTime?: Date;
+    EndTime?: Date;
+    Duration?: number;
   }) => {
-    const sourceColor = props.CategoryColor || '#3174ad';
+    const sourceColor = props.CategoryColor || '#5b2e91'; // Default to Microsoft Teams purple
+    
+    // Calculate duration in minutes
+    const duration = props.Duration ? props.Duration / (1000 * 60) : 60; // Default to 60 minutes if not provided
+    const isShortMeeting = duration <= 15; // 15 minutes or less is considered a short meeting
     
     return (
-      <div className="event-template-container" style={{ 
+      <div className={isShortMeeting ? "short-event-container" : "event-template-container"} style={{ 
         backgroundColor: sourceColor, 
-        borderRadius: '3px', 
         color: 'white', 
-        padding: '3px 6px',
+        padding: isShortMeeting ? '2px 6px' : '5px 6px',
         width: '100%', 
-        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <div style={{ fontWeight: 'bold', fontSize: '12px', width: '100%' }}>{props.Subject}</div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          {props.Location && <div style={{ fontSize: '10px', flex: '1', marginRight: '5px' }}>{props.Location}</div>}
+        height: isShortMeeting ? '22px' : '100%',
+        overflow: 'hidden',
+        borderRadius: '2px'
+      }} data-short-meeting={isShortMeeting}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: isShortMeeting ? 'center' : 'space-between',
+          height: '100%'
+        }}>
+          <div>
+            <div style={{ 
+              fontWeight: 'bold', 
+              fontSize: isShortMeeting ? '12px' : '13px', 
+              whiteSpace: 'nowrap', 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis' 
+            }}>
+              {props.Subject}
+            </div>
+            
+            {/* Only show location for meetings longer than 15 minutes */}
+            {!isShortMeeting && props.Location && (
+              <div style={{ 
+                fontSize: '12px', 
+                whiteSpace: 'nowrap', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis',
+                marginTop: '2px'
+              }}>
+                {props.Location}
+              </div>
+            )}
+          </div>
           
-          {props.MeetingLink && 
-            <div style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>
-              <a href={props.MeetingLink} target="_blank" rel="noopener noreferrer" 
-                style={{ color: 'white', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '2px' }}>
+          {/* Only show meeting link for meetings longer than 15 minutes */}
+          {!isShortMeeting && props.MeetingLink && (
+            <div style={{ fontSize: '12px', marginTop: 'auto', paddingTop: '4px' }}>
+              <a 
+                href={props.MeetingLink} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ 
+                  color: 'white', 
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  background: 'rgba(255,255,255,0.2)',
+                  padding: '2px 5px',
+                  borderRadius: '3px'
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '3px' }}>
                   <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14"></path>
                   <rect x="3" y="6" width="12" height="12" rx="2" ry="2"></rect>
                 </svg>
                 Join
               </a>
             </div>
-          }
+          )}
         </div>
       </div>
     );
@@ -427,17 +490,26 @@ export default function CalendarView() {
             <ScheduleComponent 
               ref={scheduleRef}
               height='100%' 
+              width='100%'
               cssClass="calendar-custom"
               eventSettings={{ 
                 dataSource: syncfusionEvents,
                 template: eventTemplate,
-                enableMaxHeight: true,
-                enableIndicator: false
+                enableMaxHeight: false,
+                enableIndicator: false,
+                enableTooltip: true
               }}
               selectedDate={new Date()}
               readonly={true}
+              allowResizing={false}
+              allowDragAndDrop={false}
               quickInfoTemplates={quickInfoTemplates}
               popupOpen={onPopupOpen}
+              timeScale={{ enable: true, interval: 30, slotCount: 2 }} // 30-minute increments
+              workHours={{ highlight: false }}
+              showTimeIndicator={false}
+              firstDayOfWeek={1} // Start with Monday
+              currentView="Week"
             >
               <ViewsDirective>
                 <ViewDirective option='Day' />
