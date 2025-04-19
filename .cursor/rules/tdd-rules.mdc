@@ -1,0 +1,109 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Senior TDD Rules for Software Development
+
+## Core TDD Principles
+
+1. **Tests First, Always**
+   - Write failing tests before writing any implementation code
+   - Implement only what's necessary to make the test pass
+   - Refactor while keeping tests green
+   - No exceptions to this sequence, ever
+
+2. **Test Quality Standards**
+   - Tests must be readable and self-documenting
+   - Each test should verify a single behavior or concept
+   - Use descriptive naming that explains the behavior being tested
+   - Structure tests with clear Arrange-Act-Assert patterns
+   - Test names should describe behaviors, not implementations
+
+## Implementation Standards
+
+1. **Code Quality**
+   - Follow SOLID principles in all implementations
+   - Keep methods focused with single responsibility
+   - Limit method length (<15 lines preferred)
+   - Optimize for readability over cleverness
+   - Use meaningful names that reveal intent
+   - Favor composition over inheritance
+
+2. **Refactoring Discipline**
+   - Refactor after each passing test
+   - Eliminate duplication without premature abstraction
+   - Extract domain concepts into well-named abstractions
+   - Address code smells immediately
+   - Maintain or improve test coverage with each refactor
+
+## Workflow Rules
+
+1. **Red Phase**
+   - Write a minimal test that fails for the expected reason
+   - Verify the test fails before proceeding
+   - Keep tests focused on behaviors, not implementations
+   - Start with the simplest test case first
+
+2. **Green Phase**
+   - Write the minimal code needed to pass the test
+   - "Fake it till you make it" is acceptable initially
+   - Prioritize passing tests over perfect implementations
+   - Resist adding functionality not required by tests
+
+3. **Refactor Phase**
+   - Apply design patterns appropriately
+   - Reduce complexity and improve clarity
+   - Refactor both test and implementation code
+   - Run tests after each refactoring step
+
+## Domain-Specific Guidelines
+
+1. **Model Creation**
+   - Start with tests that validate core domain behaviors
+   - Build domain models incrementally through test cases
+   - Use tests to document domain rules and edge cases
+   - Maintain separation between domain and infrastructure
+
+2. **API Design**
+   - Test public interfaces before implementation details
+   - Design APIs that are hard to use incorrectly
+   - Use tests to validate API ergonomics and usability
+   - Test error cases and edge conditions explicitly
+
+## Advanced Practices
+
+1. **Test Organization**
+   - Group related tests logically
+   - Use proper setup and teardown patterns
+   - Avoid shared mutable state between tests
+   - Create test helpers that enhance readability
+
+2. **Craftsmanship Indicators**
+   - Code reveals its intent without comments
+   - Functions and classes have appropriate abstractions
+   - Error handling is comprehensive and graceful
+   - Performance considerations are balanced with readability
+   - Security implications are addressed in design
+
+3. **Dependency Management**
+   - Use dependency injection for testability
+   - Mock external dependencies appropriately
+   - Test integration points explicitly
+   - Favor pure functions where possible
+
+## Refactoring Guidelines
+
+1. **When to Refactor**
+   - After each passing test
+   - When duplicated code appears
+   - When names no longer reflect intent
+   - When methods grow too large
+   - When classes take on multiple responsibilities
+
+2. **How to Refactor**
+   - Take small, verified steps
+   - Run tests after each change
+   - Extract methods and classes when appropriate
+   - Rename for clarity without hesitation
+   - Move responsibilities to appropriate locations
