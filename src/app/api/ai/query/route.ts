@@ -899,11 +899,18 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
       answer = `Yes, you have ${overlaps.length} overlapping meeting ${overlaps.length === 1 ? 'pair' : 'pairs'} ${timeframe}:\n\n`;
       
       overlaps.forEach((overlap, index) => {
-        const event1Start = overlap.event1.startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const event1End = overlap.event1.endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        // Ensure we have Date objects by using the original event properties if needed
+        const event1StartDate = overlap.event1.startDate || new Date(overlap.event1.start);
+        const event1EndDate = overlap.event1.endDate || new Date(overlap.event1.end);
         
-        const event2Start = overlap.event2.startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const event2End = overlap.event2.endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const event2StartDate = overlap.event2.startDate || new Date(overlap.event2.start);
+        const event2EndDate = overlap.event2.endDate || new Date(overlap.event2.end);
+        
+        const event1Start = event1StartDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const event1End = event1EndDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        
+        const event2Start = event2StartDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const event2End = event2EndDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
         
         const overlapStartTime = overlap.overlapStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
         const overlapEndTime = overlap.overlapEnd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -1400,7 +1407,12 @@ function extractPersonName(query: string): string | null {
  * Find overlapping meetings in a list of events
  */
 function findOverlappingMeetings(events: CalendarEventData[]): { 
-  overlaps: { event1: CalendarEventData, event2: CalendarEventData, overlapStart: Date, overlapEnd: Date }[],
+  overlaps: { 
+    event1: CalendarEventData & { startDate?: Date, endDate?: Date },
+    event2: CalendarEventData & { startDate?: Date, endDate?: Date },
+    overlapStart: Date, 
+    overlapEnd: Date 
+  }[],
   hasOverlaps: boolean
 } {
   const result = {
@@ -1411,11 +1423,15 @@ function findOverlappingMeetings(events: CalendarEventData[]): {
   if (events.length < 2) return result;
   
   // Convert all dates to Date objects for comparison
-  const eventsWithDates = events.map(event => ({
-    ...event,
-    startDate: new Date(event.start),
-    endDate: new Date(event.end)
-  }));
+  const eventsWithDates = events.map(event => {
+    const startDate = new Date(event.start);
+    const endDate = new Date(event.end);
+    return {
+      ...event,
+      startDate,
+      endDate
+    };
+  });
   
   // Sort events by start time
   const sortedEvents = [...eventsWithDates].sort((a, b) => 
