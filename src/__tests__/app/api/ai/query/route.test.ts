@@ -46,7 +46,9 @@ jest.mock('@/app/api/ai/query/utils', () => {
     findFreeSlots: jest.fn(() => ['From 9:00 AM to 5:00 PM']),
     extractKeywords: jest.fn(() => ['meeting']),
     extractPersonName: jest.fn(() => null),
-    formatTime: jest.fn((str) => '10:00 AM')
+    formatTime: jest.fn((str) => '10:00 AM'),
+    formatDateIST: jest.fn((date) => 'Saturday, April 19, 2025'),
+    formatDateTimeIST: jest.fn((date) => 'Saturday, April 19, 2025 at 5:00 PM')
   };
 });
 
