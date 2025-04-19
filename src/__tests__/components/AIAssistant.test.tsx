@@ -44,7 +44,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // Should show the open button but not the full assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     expect(openButton).toBeInTheDocument();
     
     // Full assistant should not be visible
@@ -55,7 +55,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // Click the open button
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Full assistant should now be visible
@@ -69,7 +69,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // First open the assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Now click the close button
@@ -79,7 +79,7 @@ describe('AIAssistant Component', () => {
     // Assistant should be collapsed again
     await waitFor(() => {
       expect(screen.queryByText(/calendar assistant/i)).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /open ai assistant/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /open calendar assistant/i })).toBeInTheDocument();
     });
   });
 
@@ -87,7 +87,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // Open the assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Check for sample queries
@@ -101,7 +101,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // Open the assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Click a sample query
@@ -117,7 +117,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // Open the assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Find submit button - use a more specific selector since there are multiple buttons
@@ -138,7 +138,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} onHighlightEvents={mockHighlightEvents} />);
     
     // Open the assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Type a query and submit
@@ -176,7 +176,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // Open the assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Type a query and submit
@@ -211,7 +211,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // Open the assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Type a query and submit
@@ -242,7 +242,7 @@ describe('AIAssistant Component', () => {
     render(<AIAssistant events={mockEvents} />);
     
     // Open the assistant
-    const openButton = screen.getByRole('button', { name: /open ai assistant/i });
+    const openButton = screen.getByRole('button', { name: /open calendar assistant/i });
     fireEvent.click(openButton);
     
     // Type a query and submit

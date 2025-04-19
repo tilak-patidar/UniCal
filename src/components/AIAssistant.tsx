@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { CalendarEvent } from '@/services/calendar-service';
 import { queryAI, AIQueryResponse } from '@/services/ai-service';
+import Image from 'next/image';
 
 interface AIAssistantProps {
   events: CalendarEvent[];
@@ -45,6 +46,8 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
       setAnswer('Sorry, I encountered an error processing your query.');
     } finally {
       setIsLoading(false);
+      // Reset the query input field after submission
+      setQuery('');
     }
   };
 
@@ -57,11 +60,28 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
     "What meetings do I have tomorrow?"
   ];
 
-  const handleSampleQuery = (sample: string) => {
+  const handleSampleQuery = async (sample: string) => {
     setQuery(sample);
-    // Focus on input after selecting a sample query
-    if (inputRef.current) {
-      inputRef.current.focus();
+    
+    // Automatically submit the sample query
+    setIsLoading(true);
+    setAnswer(null);
+    
+    try {
+      const response = await queryAI(sample, events);
+      setAnswer(response.answer);
+      
+      // If there are related events, highlight them
+      if (response.relatedEvents && onHighlightEvents) {
+        onHighlightEvents(response.relatedEvents);
+      }
+    } catch (error) {
+      console.error('Error querying AI:', error);
+      setAnswer('Sorry, I encountered an error processing your query.');
+    } finally {
+      setIsLoading(false);
+      // Reset the query input field after processing
+      setQuery('');
     }
   };
 
@@ -71,18 +91,15 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg flex items-center justify-center"
-          aria-label="Open AI Assistant"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-lg flex items-center justify-center"
+          aria-label="Open Calendar Assistant"
         >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor" 
-            className="w-6 h-6"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
+          <Image 
+            src="/chat-bot.svg" 
+            alt="Calendar Assistant" 
+            width={24} 
+            height={24}
+          />
         </button>
       )}
 
@@ -90,8 +107,17 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
       {isOpen && (
         <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-80 md:w-96 overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="bg-blue-600 text-white p-3 flex justify-between items-center">
-            <h3 className="font-medium">Calendar Assistant</h3>
+          <div className="bg-indigo-600 text-white p-3 flex justify-between items-center">
+            <div className="flex items-center">
+              <Image 
+                src="/chat-bot.svg" 
+                alt="Calendar Assistant" 
+                width={20} 
+                height={20} 
+                className="mr-2"
+              />
+              <h3 className="font-medium">Calendar Assistant</h3>
+            </div>
             <button 
               onClick={() => setIsOpen(false)} 
               className="text-white hover:text-gray-200"
@@ -112,7 +138,7 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
           <div className="p-3 bg-gray-50 flex-grow max-h-64 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
               </div>
             ) : answer ? (
               <div className="text-sm text-gray-800 space-y-1 leading-5">
@@ -122,7 +148,7 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
                       <div key={j} className={`${line.startsWith('•') ? 'pl-3 flex items-start mb-1' : 'mb-0.5'}`}>
                         {line.startsWith('•') ? (
                           <>
-                            <span className="inline-block w-3 flex-shrink-0 text-blue-600">•</span>
+                            <span className="inline-block w-3 flex-shrink-0 text-indigo-600">•</span>
                             <span 
                               className="ml-1"
                               dangerouslySetInnerHTML={{
@@ -151,8 +177,12 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
                     <button
                       key={index}
                       onClick={() => handleSampleQuery(sample)}
-                      className="bg-white border border-gray-300 rounded-full px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="bg-white border border-indigo-300 rounded-full px-3 py-1.5 text-sm text-indigo-700 
+                      hover:bg-indigo-100 transition-colors shadow-sm font-medium cursor-pointer flex items-center"
                     >
+                      <svg className="w-3.5 h-3.5 mr-1.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
                       {sample}
                     </button>
                   ))}
@@ -170,12 +200,12 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Ask about your meetings..."
-                className="flex-grow px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium"
+                className="flex-grow px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 font-medium"
                 disabled={isLoading}
               />
               <button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-lg disabled:opacity-50"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-lg disabled:opacity-50"
                 disabled={isLoading || !query.trim()}
               >
                 <svg 
