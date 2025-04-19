@@ -8,7 +8,9 @@ import {
   findFreeSlots,
   extractKeywords,
   extractPersonName,
-  formatTime
+  formatTime,
+  formatDateIST,
+  formatDateTimeIST
 } from './utils';
 
 /**
@@ -176,8 +178,8 @@ async function getClaudeResponse(query: string, events: CalendarEventData[]) {
       apiKey: process.env.ANTHROPIC_API_KEY || ''
     });
     
-    // Format current time for reference
-    const formattedTime = `${dayNames[currentTime.getDay()]}, ${monthNames[currentTime.getMonth()]} ${currentTime.getDate()}, ${currentTime.getFullYear()} at ${currentTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+    // Format current time for reference using IST timezone
+    const formattedTime = formatDateTimeIST(currentTime);
     
     // Create an optimized system prompt with examples and guidelines
     const systemPrompt = `You are an expert Calendar Assistant AI that excels at analyzing calendar data and answering questions about meetings, schedules, and availability. You maintain a conversational, helpful tone.
@@ -1365,7 +1367,12 @@ function formatMeetingsList(events: CalendarEventData[]): string {
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  });
 }
 
 // These functions have been moved to utils.ts 

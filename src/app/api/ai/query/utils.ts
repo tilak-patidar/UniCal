@@ -140,6 +140,36 @@ export function formatTime(dateStr: string): string {
 }
 
 /**
+ * Format a date for display using IST timezone
+ */
+export function formatDateIST(date: Date): string {
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"];
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  
+  // Convert to IST for display
+  const options = { timeZone: 'Asia/Kolkata' };
+  const istDate = new Date(date.toLocaleString('en-US', options));
+  
+  return `${dayNames[istDate.getDay()]}, ${monthNames[istDate.getMonth()]} ${istDate.getDate()}, ${istDate.getFullYear()}`;
+}
+
+/**
+ * Format a date with time for display using IST timezone
+ */
+export function formatDateTimeIST(date: Date): string {
+  const formattedDate = formatDateIST(date);
+  const formattedTime = date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true,
+    timeZone: 'Asia/Kolkata' 
+  });
+  
+  return `${formattedDate} at ${formattedTime}`;
+}
+
+/**
  * Extract significant keywords from a query
  */
 export function extractKeywords(query: string): string[] {
