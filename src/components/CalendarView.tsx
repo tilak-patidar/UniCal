@@ -16,6 +16,7 @@ import '@syncfusion/ej2-navigations/styles/material.css';
 import '@syncfusion/ej2-popups/styles/material.css';
 import '@syncfusion/ej2-splitbuttons/styles/material.css';
 import '@syncfusion/ej2-react-schedule/styles/material.css';
+import AIAssistant from "./AIAssistant";
 
 // Register Syncfusion license
 // Get license key from environment variable
@@ -191,6 +192,7 @@ export default function CalendarView() {
   const [isLoading, setIsLoading] = useState(true);
   const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [highlightedEvents, setHighlightedEvents] = useState<CalendarEvent[]>([]);
   const scheduleRef = useRef(null);
 
   useEffect(() => {
@@ -511,8 +513,27 @@ export default function CalendarView() {
     }
   };
 
+  // Highlights specific events when selected by AI
+  const handleHighlightEvents = (events: CalendarEvent[]) => {
+    setHighlightedEvents(events);
+    
+    // If we have a schedule reference and events to highlight
+    if (scheduleRef.current && events.length > 0) {
+      // Find the earliest event to navigate to
+      const earliestEvent = [...events].sort((a, b) => 
+        a.start.getTime() - b.start.getTime()
+      )[0];
+      
+      // Navigate to the date of the earliest event
+      const scheduleObj = (scheduleRef.current as any).scheduleObj;
+      if (scheduleObj && earliestEvent) {
+        scheduleObj.selectedDate = new Date(earliestEvent.start);
+      }
+    }
+  };
+
   return (
-    <div className="h-screen">
+    <div className="h-full relative">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mx-4 mb-2">
           {error}
@@ -521,62 +542,65 @@ export default function CalendarView() {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-full">
-          <p className="text-lg">Loading your calendar events...</p>
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <p className="mt-4 text-lg text-gray-600">Loading your calendar...</p>
+          </div>
         </div>
       ) : (
-        <div className="h-[calc(100vh-40px)]">
-          {calendarEvents.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-lg text-gray-500">No events found in your calendars</p>
-            </div>
-          ) : (
-            <ScheduleComponent 
-              ref={scheduleRef}
-              height='100%' 
-              width='100%'
-              cssClass="calendar-custom teams-calendar"
-              eventSettings={{ 
-                dataSource: syncfusionEvents,
-                template: eventTemplate,
-                enableMaxHeight: false,
-                enableIndicator: false,
-                enableTooltip: true,
-                allowMultiple: true,
-                enableRecurrence: false,
-                displayName: "overlap-adjustment"
-              }}
-              selectedDate={new Date()}
-              readonly={true}
-              allowResizing={false}
-              allowDragAndDrop={false}
-              quickInfoTemplates={quickInfoTemplates}
-              popupOpen={onPopupOpen}
-              timeScale={{ enable: true, interval: 30, slotCount: 2 }} // 30-minute increments
-              workHours={{ highlight: false }}
-              showTimeIndicator={false}
-              firstDayOfWeek={1} // Start with Monday
-              currentView="Week"
-              eventRendered={(args: any) => {
-                if (args && args.element) {
-                  const element = args.element;
-                  if (element.classList.contains('e-appointment-overlap')) {
-                    // Add custom classes for styling
-                    element.classList.add('teams-overlap-event');
-                  }
+        <>
+          <ScheduleComponent 
+            ref={scheduleRef}
+            height='100%' 
+            width='100%'
+            cssClass="calendar-custom teams-calendar"
+            eventSettings={{ 
+              dataSource: syncfusionEvents,
+              template: eventTemplate,
+              enableMaxHeight: false,
+              enableIndicator: false,
+              enableTooltip: true,
+              allowMultiple: true,
+              enableRecurrence: false,
+              displayName: "overlap-adjustment"
+            }}
+            selectedDate={new Date()}
+            readonly={true}
+            allowResizing={false}
+            allowDragAndDrop={false}
+            quickInfoTemplates={quickInfoTemplates}
+            popupOpen={onPopupOpen}
+            timeScale={{ enable: true, interval: 30, slotCount: 2 }} // 30-minute increments
+            workHours={{ highlight: false }}
+            showTimeIndicator={false}
+            firstDayOfWeek={1} // Start with Monday
+            currentView="Week"
+            eventRendered={(args: any) => {
+              if (args && args.element) {
+                const element = args.element;
+                if (element.classList.contains('e-appointment-overlap')) {
+                  // Add custom classes for styling
+                  element.classList.add('teams-overlap-event');
                 }
-              }}
-            >
-              <ViewsDirective>
-                <ViewDirective option='Day' />
-                <ViewDirective option='Week' />
-                <ViewDirective option='WorkWeek' />
-                <ViewDirective option='Month' />
-                <ViewDirective option='Agenda' />
-              </ViewsDirective>
-              <Inject services={[Day, Week, WorkWeek, Month, Agenda]} />
-            </ScheduleComponent>
-          )}
-        </div>
+              }
+            }}
+          >
+            <ViewsDirective>
+              <ViewDirective option='Day' />
+              <ViewDirective option='Week' />
+              <ViewDirective option='WorkWeek' />
+              <ViewDirective option='Month' />
+              <ViewDirective option='Agenda' />
+            </ViewsDirective>
+            <Inject services={[Day, Week, WorkWeek, Month, Agenda]} />
+          </ScheduleComponent>
+          
+          {/* AI Assistant */}
+          <AIAssistant 
+            events={calendarEvents} 
+            onHighlightEvents={handleHighlightEvents} 
+          />
+        </>
       )}
     </div>
   );
