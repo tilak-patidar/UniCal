@@ -108,7 +108,7 @@ export default function Header({ onCreateMeeting }: HeaderProps) {
               onClick={() => handleConnectProvider("google")}
               className={`px-3 py-1 text-sm rounded-md ${
                 connectedProviders.includes("google")
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  ? "bg-[#16a765] text-white cursor-not-allowed"
                   : "bg-blue-50 text-blue-600 hover:bg-blue-100"
               }`}
               disabled={connectedProviders.includes("google") || isConnecting}
@@ -119,7 +119,7 @@ export default function Header({ onCreateMeeting }: HeaderProps) {
               onClick={() => handleConnectProvider("azure-ad")}
               className={`px-3 py-1 text-sm rounded-md ${
                 connectedProviders.includes("azure-ad")
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  ? "bg-[#0078D4] text-white cursor-not-allowed"
                   : "bg-blue-50 text-blue-600 hover:bg-blue-100"
               }`}
               disabled={connectedProviders.includes("azure-ad") || isConnecting}
