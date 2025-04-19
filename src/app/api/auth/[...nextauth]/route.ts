@@ -34,7 +34,7 @@ const handler = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       authorization: {
         params: {
-          scope: "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/calendar",
+          scope: "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
           prompt: "consent",
           access_type: "offline",
           response_type: "code",
@@ -47,7 +47,7 @@ const handler = NextAuth({
       tenantId: process.env.AZURE_AD_TENANT_ID,
       authorization: {
         params: {
-          scope: "openid profile email offline_access Calendars.Read",
+          scope: "openid profile email offline_access Calendars.Read Calendars.ReadWrite",
         },
       },
     }),

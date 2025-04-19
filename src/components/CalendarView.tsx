@@ -29,9 +29,15 @@ import '@syncfusion/ej2-popups/styles/material.css';
 import '@syncfusion/ej2-splitbuttons/styles/material.css';
 import '@syncfusion/ej2-react-schedule/styles/material.css';
 import AIAssistant from "./AIAssistant";
+import CreateMeetingForm from "./CreateMeetingForm";
 
 // Register Syncfusion license
 registerLicense(process.env.NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY || '');
+
+interface CalendarViewProps {
+  isMeetingFormOpen: boolean;
+  setIsMeetingFormOpen: (isOpen: boolean) => void;
+}
 
 interface StoredAuthToken {
   provider: string;
@@ -95,7 +101,7 @@ export const isJoinableEvent = (startTime: Date, endTime: Date): boolean => {
   return isUpcoming || isOngoing;
 };
 
-export default function CalendarView() {
+export default function CalendarView({ isMeetingFormOpen, setIsMeetingFormOpen }: CalendarViewProps) {
   const { data: session } = useSession();
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,6 +110,8 @@ export default function CalendarView() {
   const [highlightedEvents, setHighlightedEvents] = useState<CalendarEvent[]>([]);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const scheduleRef = useRef(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [syncfusionEvents, setSyncfusionEvents] = useState<any[]>([]);
 
   // Update current time every minute to refresh "upcoming" status
   useEffect(() => {
@@ -251,8 +259,10 @@ export default function CalendarView() {
     fetchEvents();
   }, [session]);
 
-  // Convert our existing events to Syncfusion format
-  const syncfusionEvents = convertToSyncfusionEvents(calendarEvents);
+  // Update Syncfusion events when calendarEvents change
+  useEffect(() => {
+    setSyncfusionEvents(convertToSyncfusionEvents(calendarEvents));
+  }, [calendarEvents]);
 
   // Highlights specific events when selected by AI
   const handleHighlightEvents = (events: CalendarEvent[]) => {
@@ -425,6 +435,31 @@ export default function CalendarView() {
     }
   };
 
+  // Function to handle event creation success
+  const handleEventCreated = (newEvent: CalendarEvent) => {
+    // Add the new event to the local state
+    setCalendarEvents(prevEvents => {
+      const updatedEvents = [...prevEvents, newEvent];
+      
+      // Also update Syncfusion events
+      const updatedSyncfusionEvents = convertToSyncfusionEvents(updatedEvents);
+      setSyncfusionEvents(updatedSyncfusionEvents);
+      
+      return updatedEvents;
+    });
+    
+    // Show success message or additional UI feedback if needed
+    console.log("Meeting created successfully:", newEvent);
+  };
+
+  // Handle cell double click to open meeting form
+  const handleCellDoubleClick = (args: any) => {
+    if (args.startTime) {
+      setSelectedDate(new Date(args.startTime));
+      setIsMeetingFormOpen(true);
+    }
+  };
+
   return (
     <div className="h-full relative">
       {error && (
@@ -450,7 +485,6 @@ export default function CalendarView() {
             eventSettings={{
               dataSource: syncfusionEvents,
               enableTooltip: true,
-              allowMultiple: true,
               template: eventTemplate
             }}
             readonly={true}
@@ -470,6 +504,12 @@ export default function CalendarView() {
                 args.element.style.backgroundColor = color;
               }
             }}
+            cellClick={(args: any) => {
+              if (args.startTime) {
+                setSelectedDate(new Date(args.startTime));
+              }
+            }}
+            cellDoubleClick={handleCellDoubleClick}
           >
             <ViewsDirective>
               <ViewDirective option='Day' />
@@ -485,6 +525,14 @@ export default function CalendarView() {
           <AIAssistant 
             events={calendarEvents} 
             onHighlightEvents={handleHighlightEvents} 
+          />
+          
+          {/* Create Meeting Form */}
+          <CreateMeetingForm
+            isOpen={isMeetingFormOpen}
+            onClose={() => setIsMeetingFormOpen(false)}
+            onEventCreated={handleEventCreated}
+            initialDate={selectedDate}
           />
         </>
       )}

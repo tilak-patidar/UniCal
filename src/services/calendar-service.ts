@@ -12,6 +12,18 @@ export interface CalendarEvent {
   meetingLink?: string;
 }
 
+// New interface for creating calendar events
+export interface NewCalendarEvent {
+  title: string;
+  start: Date;
+  end: Date;
+  location?: string;
+  description?: string;
+  isOnlineMeeting?: boolean;
+  attendees?: string[]; // Email addresses of attendees
+  timeZone?: string;
+}
+
 interface GoogleCalendarEvent {
   id: string;
   summary?: string;
@@ -184,4 +196,152 @@ export function mergeCalendarEvents(
   return [...googleEvents, ...microsoftEvents].sort(
     (a, b) => a.start.getTime() - b.start.getTime()
   );
+}
+
+export async function createGoogleCalendarEvent(accessToken: string, event: NewCalendarEvent): Promise<CalendarEvent | null> {
+  try {
+    // Format attendees as Google expects
+    const attendees = event.attendees?.map(email => ({ email })) || [];
+    
+    // Create the request body
+    const requestBody = {
+      summary: event.title,
+      location: event.location,
+      description: event.description,
+      start: {
+        dateTime: event.start.toISOString(),
+        timeZone: event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      end: {
+        dateTime: event.end.toISOString(),
+        timeZone: event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      attendees,
+      // Add video conferencing if requested
+      conferenceData: event.isOnlineMeeting ? {
+        createRequest: {
+          requestId: `${Date.now()}`
+        }
+      } : undefined
+    };
+
+    // Make the API call
+    const response = await axios.post(
+      "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          conferenceDataVersion: event.isOnlineMeeting ? 1 : 0
+        }
+      }
+    );
+
+    // Convert to our CalendarEvent format
+    return {
+      id: response.data.id,
+      title: response.data.summary || "No Title",
+      start: new Date(response.data.start.dateTime || response.data.start.date),
+      end: new Date(response.data.end.dateTime || response.data.end.date),
+      location: response.data.location,
+      description: response.data.description,
+      source: "google" as const,
+      allDay: Boolean(response.data.start.date),
+      meetingLink: response.data.hangoutLink || 
+                  response.data.conferenceData?.entryPoints?.find(
+                    (entryPoint: any) => entryPoint.entryPointType === 'video'
+                  )?.uri
+    };
+  } catch (error) {
+    console.error("Error creating Google Calendar event", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Google API Error Response:", error.response?.data);
+    }
+    return null;
+  }
+}
+
+export async function createMicrosoftCalendarEvent(accessToken: string, event: NewCalendarEvent): Promise<CalendarEvent | null> {
+  try {
+    // Format attendees as Microsoft expects
+    const attendees = event.attendees?.map(email => ({
+      emailAddress: {
+        address: email
+      },
+      type: "required"
+    })) || [];
+
+    // Create the request body
+    const requestBody = {
+      subject: event.title,
+      body: {
+        contentType: "HTML",
+        content: event.description || ""
+      },
+      start: {
+        dateTime: event.start.toISOString(),
+        timeZone: event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      end: {
+        dateTime: event.end.toISOString(),
+        timeZone: event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      location: {
+        displayName: event.location || ""
+      },
+      attendees,
+      isOnlineMeeting: event.isOnlineMeeting,
+      onlineMeetingProvider: event.isOnlineMeeting ? "teamsForBusiness" : null
+    };
+
+    // Make the API call
+    const response = await axios.post(
+      "https://graph.microsoft.com/v1.0/me/events",
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    // Convert to our CalendarEvent format
+    return {
+      id: response.data.id,
+      title: response.data.subject || "No Title",
+      start: new Date(response.data.start.dateTime + (response.data.start.dateTime.includes('Z') ? '' : 'Z')),
+      end: new Date(response.data.end.dateTime + (response.data.end.dateTime.includes('Z') ? '' : 'Z')),
+      location: response.data.location?.displayName,
+      description: response.data.bodyPreview,
+      source: "microsoft" as const,
+      allDay: response.data.isAllDay,
+      meetingLink: response.data.onlineMeeting?.joinUrl || response.data.onlineMeetingUrl
+    };
+  } catch (error) {
+    console.error("Error creating Microsoft Calendar event", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Microsoft API Error Response:", error.response?.data);
+    }
+    return null;
+  }
+}
+
+// Function to create a calendar event on the appropriate platform
+export async function createCalendarEvent(
+  provider: string, 
+  accessToken: string, 
+  event: NewCalendarEvent
+): Promise<CalendarEvent | null> {
+  if (provider === "google") {
+    return createGoogleCalendarEvent(accessToken, event);
+  } else if (provider === "azure-ad") {
+    return createMicrosoftCalendarEvent(accessToken, event);
+  } else {
+    console.error(`Unsupported provider: ${provider}`);
+    return null;
+  }
 }

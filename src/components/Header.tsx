@@ -6,7 +6,11 @@ import { Menu, Transition } from "@headlessui/react";
 import { UserIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 
-export default function Header() {
+interface HeaderProps {
+  onCreateMeeting?: () => void;
+}
+
+export default function Header({ onCreateMeeting }: HeaderProps) {
   const { data: session, status } = useSession();
   const [connectedProviders, setConnectedProviders] = useState<string[]>(
     session?.provider ? [session.provider] : []
@@ -122,6 +126,16 @@ export default function Header() {
             >
               {connectedProviders.includes("azure-ad") ? "Microsoft Connected" : "Connect Microsoft"}
             </button>
+            
+            {/* Create Meeting button */}
+            {(connectedProviders.length > 0) && (
+              <button
+                onClick={onCreateMeeting}
+                className="px-4 py-1 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out"
+              >
+                Create Meeting
+              </button>
+            )}
           </div>
         )}
 
