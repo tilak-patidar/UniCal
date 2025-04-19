@@ -7,6 +7,7 @@ SmartCalendr is a modern web application that allows users to connect and view t
 - User authentication with NextAuth.js
 - Integration with Google Calendar and Microsoft Outlook Calendar
 - Unified calendar view showing events from both providers
+- AI Assistant for calendar management
 - Modern UI with Tailwind CSS
 - Responsive design
 
@@ -19,12 +20,13 @@ SmartCalendr is a modern web application that allows users to connect and view t
 - Tailwind CSS for styling
 - Headless UI for accessible components
 - Heroicons for icons
+- Anthropic API for AI assistance
 
 ## Setup and Configuration
 
 ### Prerequisites
 
-- Node.js 18.0.0 or later
+- Node.js 20.x or later
 
 ### Installation
 
@@ -56,6 +58,9 @@ SmartCalendr is a modern web application that allows users to connect and view t
    AZURE_AD_CLIENT_ID=your-azure-ad-client-id
    AZURE_AD_CLIENT_SECRET=your-azure-ad-client-secret
    AZURE_AD_TENANT_ID=your-azure-ad-tenant-id
+   
+   # Anthropic API
+   ANTHROPIC_API_KEY=your-anthropic-api-key
    ```
 
 4. Start the development server:
@@ -94,12 +99,32 @@ SmartCalendr is a modern web application that allows users to connect and view t
 npm run dev
 ```
 
+### Running Tests
+
+```bash
+npm test
+```
+
+For test coverage report:
+
+```bash
+npm run test:coverage
+```
+
 ### Building for Production
 
 ```bash
 npm run build
 npm start
 ```
+
+## Continuous Integration
+
+This project uses GitHub Actions for continuous integration. The CI workflow runs tests automatically when:
+- Code is pushed to the main branch
+- Pull requests are opened against the main branch
+
+The workflow configuration is located in `.github/workflows/ci.yml`.
 
 ## License
 
