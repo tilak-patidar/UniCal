@@ -130,12 +130,12 @@ export function findFreeSlots(events: CalendarEventData[], now: Date): string[] 
  */
 export function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
-  // Use UTC methods to ensure consistent formatting across environments
+  // Use IST timezone for consistent formatting for users in India
   return date.toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit', 
     hour12: true,
-    timeZone: 'UTC' 
+    timeZone: 'Asia/Kolkata' 
   });
 }
 
