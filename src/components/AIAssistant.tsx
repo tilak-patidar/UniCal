@@ -109,14 +109,39 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
           </div>
 
           {/* Answer display area */}
-          <div className="p-4 bg-gray-50 flex-grow max-h-64 overflow-y-auto">
+          <div className="p-3 bg-gray-50 flex-grow max-h-64 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             ) : answer ? (
-              <div className="text-gray-800">
-                {answer}
+              <div className="text-sm text-gray-800 space-y-1 leading-5">
+                {answer.split('\n\n').map((paragraph, i) => (
+                  <div key={i} className="mb-1.5">
+                    {paragraph.split('\n').map((line, j) => (
+                      <div key={j} className={`${line.startsWith('•') ? 'pl-3 flex items-start mb-1' : 'mb-0.5'}`}>
+                        {line.startsWith('•') ? (
+                          <>
+                            <span className="inline-block w-3 flex-shrink-0 text-blue-600">•</span>
+                            <span 
+                              className="ml-1"
+                              dangerouslySetInnerHTML={{
+                                __html: line.substring(1).replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                              }} 
+                            />
+                          </>
+                        ) : (
+                          <span 
+                            className={line.startsWith('**') ? 'font-medium text-gray-900' : ''}
+                            dangerouslySetInnerHTML={{
+                              __html: line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                            }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-gray-500 h-full flex flex-col justify-center">

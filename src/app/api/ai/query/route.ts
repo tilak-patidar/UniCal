@@ -99,8 +99,10 @@ async function getClaudeResponse(query: string, events: CalendarEventData[]) {
       title: event.title,
       rawStart: event.start, // Keep original for filtering
       rawEnd: event.end,     // Keep original for filtering
-      start: formatDate(startDate) + ' at ' + formatTime(startDate),
-      end: formatTime(endDate),
+      start: formatDate(startDate),
+      startTime: formatTime(startDate),
+      endTime: formatTime(endDate),
+      timeRange: `from ${formatTime(startDate)} to ${formatTime(endDate)}`,
       duration: hours > 0 ? `${hours}h ${minutes > 0 ? minutes + 'm' : ''}` : `${minutes}m`,
       location: event.location || 'No location specified',
       description: event.description?.substring(0, 150) || 'No description available',
@@ -159,25 +161,50 @@ IMPORTANT GUIDELINES:
 1. Answer questions with absolute accuracy based ONLY on the calendar data provided
 2. Format dates as "Weekday, Month Day" (e.g., "Monday, June 10")
 3. Format times in 12-hour format with AM/PM (e.g., "2:30 PM")
-4. When listing meetings, include their title, time, and location if relevant
+4. When listing meetings, ONLY include their title and time by default - keep responses concise
 5. For availability/free time questions, analyze gaps between meetings
 6. Understand both explicit queries ("meetings today") and implicit ones ("am I busy this afternoon")
 7. Never invent meetings or details not present in the data
 8. If uncertain, acknowledge limitations rather than guessing
-9. Be concise and direct while remaining conversational
-10. When meetings involve specific people, highlight those connections
-11. For "next meeting" queries, find the next chronological meeting after the current time
+9. Use proper formatting with line breaks between sections and bullet points for lists
+10. For "next meeting" queries, find the next chronological meeting after the current time
+11. Keep responses focused and concise - users prefer brief listings over detailed descriptions
+
+FORMATTING GUIDELINES:
+1. Always use bullet points (•) when listing multiple meetings or events
+2. Add line breaks between different sections of your answer
+3. Bold important information like meeting titles using ** around the text
+4. Use clear section headings when appropriate (Today's Meetings, Tomorrow's Schedule, etc.)
+5. Group related information together with proper spacing
+6. For time blocks, use consistent formatting "from 9:00 AM to 10:30 AM"
+7. Format your responses for maximum readability on mobile and desktop screens
+8. Keep location, descriptions, and other details minimal unless specifically requested
 
 EXAMPLES OF PERFECT RESPONSES:
 
 User: "What meetings do I have today?"
-Assistant: "You have 3 meetings today: "Product Review" at 10:00 AM, "Team Standup" at 1:30 PM, and "Client Call" at 4:00 PM."
+Assistant: "You have 3 meetings today:
+
+• **Product Review** from 10:00 AM to 11:00 AM
+• **Team Standup** from 1:30 PM to 2:00 PM
+• **Client Call** from 4:00 PM to 4:30 PM"
 
 User: "When am I free tomorrow?"
-Assistant: "Tomorrow you have meetings from 9:00 AM-10:30 AM and 2:00 PM-3:00 PM. You're free from 10:30 AM-2:00 PM and after 3:00 PM."
+Assistant: "Tomorrow's schedule:
+
+**Busy periods:**
+• 9:00 AM - 10:30 AM: **Morning Sync**
+• 2:00 PM - 3:00 PM: **Project Update**
+
+**Free periods:**
+• 10:30 AM - 2:00 PM
+• After 3:00 PM"
 
 User: "Do I have any meetings with Sarah?"
-Assistant: "Yes, you have 2 upcoming meetings with Sarah: "Project Planning" on Thursday, June 12 at 11:00 AM and "Budget Review" on Monday, June 16 at 2:00 PM."`;
+Assistant: "Yes, you have 2 upcoming meetings with Sarah:
+
+• **Project Planning** from 11:00 AM to 12:00 PM on Thursday, June 12
+• **Budget Review** from 2:00 PM to 3:00 PM on Monday, June 16"`;
 
     // Prepare user message with structured calendar data
     const userMessage = `The current time is ${formattedTime}.
@@ -279,11 +306,11 @@ Based on this calendar data, please answer my question: ${query}`;
 }
 
 /**
- * Format a list of events into readable text
+ * Format a list of events into readable text with concise formatting
  */
 function formatEventsList(events) {
-  return events.map((event, index) => {
-    return `${index + 1}. "${event.title}" - ${event.start} to ${event.end}${event.location !== 'No location specified' ? ` at ${event.location}` : ''}${event.people.length > 0 ? ` with ${event.people.join(', ')}` : ''}`;
+  return events.map((event) => {
+    return `• **${event.title}** ${event.timeRange}`;
   }).join('\n');
 }
 
@@ -359,9 +386,9 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
     );
     
     if (relatedEvents.length === 0) {
-      answer = 'You have no meetings scheduled for today.';
+      answer = '**Today\'s Schedule:**\n\nYou have no meetings scheduled for today.';
     } else {
-      answer = `You have ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} today. `;
+      answer = `**Today's Schedule:**\n\nYou have ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} today.`;
       answer += formatMeetingsList(relatedEvents);
     }
   } 
@@ -371,9 +398,9 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
     );
     
     if (relatedEvents.length === 0) {
-      answer = 'You have no meetings scheduled for tomorrow.';
+      answer = '**Tomorrow\'s Schedule:**\n\nYou have no meetings scheduled for tomorrow.';
     } else {
-      answer = `You have ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} tomorrow. `;
+      answer = `**Tomorrow's Schedule:**\n\nYou have ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} tomorrow.`;
       answer += formatMeetingsList(relatedEvents);
     }
   }
@@ -387,9 +414,9 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
       );
       
       if (relatedEvents.length === 0) {
-        answer = `I couldn't find any meetings with ${person}.`;
+        answer = `I couldn't find any meetings with **${person}**.`;
       } else {
-        answer = `I found ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} with ${person}. `;
+        answer = `**Meetings with ${person}:**\n\nI found ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} with **${person}**.`;
         answer += formatMeetingsList(relatedEvents);
       }
     } else {
@@ -407,13 +434,15 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
       answer = 'You have no upcoming meetings scheduled.';
     } else {
       const nextEvent = upcomingEvents[0];
-      answer = `Your next meeting is "${nextEvent.title}" on ${formatDate(nextEvent.start)} at ${formatTime(nextEvent.start)}.`;
+      const startDate = new Date(nextEvent.start);
+      const endDate = new Date(nextEvent.end);
+      answer = `**Next Meeting:**\n\nYour next meeting is **${nextEvent.title}** on ${formatDate(nextEvent.start)} from ${formatTime(nextEvent.start)} to ${formatTime(nextEvent.end)}.`;
+      
+      // Only add meeting link info if available
       if (nextEvent.meetingLink) {
-        answer += ` It has a meeting link available.`;
+        answer += `\n\nThis meeting has an online meeting link.`;
       }
-      if (nextEvent.location) {
-        answer += ` Location: ${nextEvent.location}.`;
-      }
+      
       relatedEvents = [nextEvent];
     }
   }
@@ -425,19 +454,24 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
     ).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
     
     if (todayEvents.length === 0) {
-      answer = 'You have no more meetings today. You are free for the rest of the day.';
+      answer = '**Availability Today:**\n\nYou have no more meetings today. You are free for the rest of the day.';
     } else {
+      answer = '**Availability Today:**\n\n';
+      
+      // Format busy times as bullet points
+      answer += '**Busy periods:**\n';
       const busyTimes = todayEvents.map(event => 
-        `${formatTime(event.start)} to ${formatTime(event.end)}`
-      ).join(', ');
-      answer = `Today you are busy during: ${busyTimes}. `;
+        `• **${event.title}** from ${formatTime(event.start)} to ${formatTime(event.end)}`
+      ).join('\n');
+      answer += busyTimes;
       
       // Find free slots
       const freeSlots = findFreeSlots(todayEvents, now);
       if (freeSlots.length > 0) {
-        answer += `You have free time during: ${freeSlots.join(', ')}.`;
+        answer += '\n\n**Free periods:**\n';
+        answer += freeSlots.map(slot => `• ${slot}`).join('\n');
       } else {
-        answer += 'You have no significant free time slots remaining today.';
+        answer += '\n\nYou have no significant free time slots remaining today.';
       }
       
       relatedEvents = todayEvents;
@@ -456,9 +490,9 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
       );
       
       if (relatedEvents.length === 0) {
-        answer = `I couldn't find any meetings matching your search terms.`;
+        answer = `**Search Results:**\n\nI couldn't find any meetings matching your search terms.`;
       } else {
-        answer = `I found ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} matching your search. `;
+        answer = `**Search Results:**\n\nI found ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} matching your search.`;
         answer += formatMeetingsList(relatedEvents);
       }
     } else {
@@ -475,11 +509,11 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
       .slice(0, 3);
     
     if (upcomingEvents.length === 0) {
-      answer = 'You have no upcoming meetings scheduled.';
+      answer = '**Calendar Assistant:**\n\nYou have no upcoming meetings scheduled.';
     } else {
-      answer = `Your upcoming meetings are: `;
+      answer = `**Upcoming Meetings:**\n\nHere are your next few meetings:`;
       answer += formatMeetingsList(upcomingEvents);
-      answer += ' You can ask me about specific meetings, your schedule today, tomorrow, or your next meeting.';
+      answer += '\n\n**Tips:**\nYou can ask me about:\n• Your schedule today or tomorrow\n• Meetings with specific people\n• Your next meeting\n• When you are free';
       relatedEvents = upcomingEvents;
     }
   }
@@ -515,10 +549,13 @@ function findRelatedEvents(query: string, events: CalendarEventData[]) {
 // Helper functions
 
 function formatMeetingsList(events: CalendarEventData[]): string {
-  return events.map(event => {
+  const formattedList = events.map(event => {
     const start = new Date(event.start);
-    return `"${event.title}" on ${formatDate(event.start)} at ${formatTime(event.start)}`;
-  }).join('; ');
+    const end = new Date(event.end);
+    return `• **${event.title}** from ${formatTime(event.start)} to ${formatTime(event.end)}`;
+  }).join('\n');
+  
+  return `\n${formattedList}`;
 }
 
 function formatDate(dateStr: string): string {
@@ -559,7 +596,7 @@ function findFreeSlots(events: CalendarEventData[], now: Date): string[] {
     
     // If there's a gap between last meeting and this one
     if (eventStart.getTime() - lastEndTime.getTime() > 30 * 60 * 1000) { // 30 minutes
-      freeSlots.push(`${formatTime(lastEndTime.toISOString())} to ${formatTime(eventStart.toISOString())}`);
+      freeSlots.push(`From ${formatTime(lastEndTime.toISOString())} to ${formatTime(eventStart.toISOString())}`);
     }
     
     // Update last end time if this meeting ends later
@@ -570,7 +607,7 @@ function findFreeSlots(events: CalendarEventData[], now: Date): string[] {
   
   // Add any free time after the last meeting until end of day
   if (endOfDay.getTime() - lastEndTime.getTime() > 30 * 60 * 1000) { // 30 minutes
-    freeSlots.push(`${formatTime(lastEndTime.toISOString())} to ${formatTime(endOfDay.toISOString())}`);
+    freeSlots.push(`From ${formatTime(lastEndTime.toISOString())} to ${formatTime(endOfDay.toISOString())}`);
   }
   
   return freeSlots;
