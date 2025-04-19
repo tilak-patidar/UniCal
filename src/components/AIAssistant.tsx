@@ -144,28 +144,51 @@ export default function AIAssistant({ events, onHighlightEvents }: AIAssistantPr
               <div className="text-sm text-gray-800 space-y-1 leading-5">
                 {answer.split('\n\n').map((paragraph, i) => (
                   <div key={i} className="mb-1.5">
-                    {paragraph.split('\n').map((line, j) => (
-                      <div key={j} className={`${line.startsWith('•') ? 'pl-3 flex items-start mb-1' : 'mb-0.5'}`}>
-                        {line.startsWith('•') ? (
-                          <>
-                            <span className="inline-block w-3 flex-shrink-0 text-indigo-600">•</span>
+                    {paragraph.split('\n').map((line, j) => {
+                      // Handle bullet points with special formatting
+                      if (line.startsWith('•')) {
+                        // Match the pattern: • **Title** from Time to Time
+                        const meetingMatch = line.match(/^•\s*\*\*(.*?)\*\*\s*(from.*)/);
+                        
+                        if (meetingMatch) {
+                          const [_, title, timeInfo] = meetingMatch;
+                          return (
+                            <div key={j} className="pl-3 flex items-start mb-1">
+                              <span className="inline-block w-3 flex-shrink-0 text-indigo-600">•</span>
+                              <div className="ml-1">
+                                <strong className="font-semibold text-gray-900 block">{title}</strong>
+                                <span className="text-gray-600 whitespace-pre-wrap">{timeInfo}</span>
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          // Default bullet point handling for other formats
+                          return (
+                            <div key={j} className="pl-3 flex items-start mb-1">
+                              <span className="inline-block w-3 flex-shrink-0 text-indigo-600">•</span>
+                              <span 
+                                className="ml-1 whitespace-pre-wrap"
+                                dangerouslySetInnerHTML={{
+                                  __html: line.substring(1).replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                                }} 
+                              />
+                            </div>
+                          );
+                        }
+                      } else {
+                        // Regular line handling (not a bullet point)
+                        return (
+                          <div key={j} className="mb-0.5">
                             <span 
-                              className="ml-1"
+                              className={`${line.startsWith('**') ? 'font-medium text-gray-900' : ''} whitespace-pre-wrap`}
                               dangerouslySetInnerHTML={{
-                                __html: line.substring(1).replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
-                              }} 
+                                __html: line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                              }}
                             />
-                          </>
-                        ) : (
-                          <span 
-                            className={line.startsWith('**') ? 'font-medium text-gray-900' : ''}
-                            dangerouslySetInnerHTML={{
-                              __html: line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
-                            }}
-                          />
-                        )}
-                      </div>
-                    ))}
+                          </div>
+                        );
+                      }
+                    })}
                   </div>
                 ))}
               </div>

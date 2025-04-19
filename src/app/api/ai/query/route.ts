@@ -123,15 +123,17 @@ async function getClaudeResponse(query: string, events: CalendarEventData[]) {
   tomorrowDate.setDate(currentTime.getDate() + 1);
   const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
   
-  // Today's events
-  const todayEvents = enrichedEvents.filter(event => 
-    event.rawStart.includes(todayStr)
-  ).sort((a, b) => a.startTimestamp - b.startTimestamp);
+  // Today's events - use exact date matching
+  const todayEvents = enrichedEvents.filter(event => {
+    const eventDate = new Date(event.rawStart);
+    return eventDate.toISOString().split('T')[0] === todayStr;
+  }).sort((a, b) => a.startTimestamp - b.startTimestamp);
   
-  // Tomorrow's events
-  const tomorrowEvents = enrichedEvents.filter(event => 
-    event.rawStart.includes(tomorrowStr)
-  ).sort((a, b) => a.startTimestamp - b.startTimestamp);
+  // Tomorrow's events - use exact date matching
+  const tomorrowEvents = enrichedEvents.filter(event => {
+    const eventDate = new Date(event.rawStart);
+    return eventDate.toISOString().split('T')[0] === tomorrowStr;
+  }).sort((a, b) => a.startTimestamp - b.startTimestamp);
   
   // Upcoming events
   const upcomingEvents = enrichedEvents
@@ -217,9 +219,13 @@ FORMATTING GUIDELINES:
 3. Bold important information like meeting titles using ** around the text
 4. Use clear section headings when appropriate (Today's Meetings, Tomorrow's Schedule, etc.)
 5. Group related information together with proper spacing
-6. For time blocks, use consistent formatting "from 9:00 AM to 10:30 AM"
-7. Format your responses for maximum readability on mobile and desktop screens
-8. Keep location, descriptions, and other details minimal unless specifically requested
+6. CRITICAL FORMATTING RULE: Each meeting in a list MUST follow this exact format with required spacing:
+   "• **Meeting Title** from 9:00 AM to 10:30 AM"
+7. ALWAYS use 12-hour time format with AM/PM (never 24-hour format)
+8. ALWAYS ensure there is proper spacing between the bullet point, title, and time info
+9. Format your responses for maximum readability on mobile and desktop screens
+10. Keep location, descriptions, and other details minimal unless specifically requested
+11. For meeting lists, never format them as plain text - always use the bullet point format specified above
 
 EXAMPLES OF PERFECT RESPONSES:
 
@@ -421,15 +427,17 @@ Based on this calendar data, please answer my question: ${query}`;
     
     // For today queries
     if (normalizedQuery.includes('today')) {
-      relatedEvents = events.filter(event => 
-        event.start.includes(todayStr)
-      );
+      relatedEvents = events.filter(event => {
+        const eventDate = new Date(event.start);
+        return eventDate.toISOString().split('T')[0] === todayStr;
+      });
     } 
     // For tomorrow queries
     else if (normalizedQuery.includes('tomorrow')) {
-      relatedEvents = events.filter(event => 
-        event.start.includes(tomorrowStr)
-      );
+      relatedEvents = events.filter(event => {
+        const eventDate = new Date(event.start);
+        return eventDate.toISOString().split('T')[0] === tomorrowStr;
+      });
     } 
     // For date format queries (e.g., 21/04/2025 or 2025-04-21)
     else if (normalizedQuery.match(/\d{1,2}\/\d{1,2}\/\d{4}/) || normalizedQuery.match(/\d{4}-\d{1,2}-\d{1,2}/)) {
@@ -550,7 +558,7 @@ Based on this calendar data, please answer my question: ${query}`;
  */
 function formatEventsList(events) {
   return events.map((event) => {
-    return `• **${event.title}** ${event.timeRange}`;
+    return `• **${event.title}** from ${event.startTime} to ${event.endTime}`;
   }).join('\n');
 }
 
@@ -623,9 +631,11 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
   
   // Time-based queries
   if (normalizedQuery.includes('today') || normalizedQuery.includes('meetings today')) {
-    relatedEvents = events.filter(event => 
-      event.start.includes(todayStr)
-    );
+    // Use exact date matching instead of string includes
+    relatedEvents = events.filter(event => {
+      const eventDate = new Date(event.start);
+      return eventDate.toISOString().split('T')[0] === todayStr;
+    });
     
     if (relatedEvents.length === 0) {
       answer = 'You have no meetings scheduled for today.';
@@ -642,9 +652,11 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
     }
   } 
   else if (normalizedQuery.includes('tomorrow') || normalizedQuery.includes('meetings tomorrow')) {
-    relatedEvents = events.filter(event => 
-      event.start.includes(tomorrowStr)
-    );
+    // Use exact date matching instead of string includes
+    relatedEvents = events.filter(event => {
+      const eventDate = new Date(event.start);
+      return eventDate.toISOString().split('T')[0] === tomorrowStr;
+    });
     
     if (relatedEvents.length === 0) {
       answer = 'You have no meetings scheduled for tomorrow.';
