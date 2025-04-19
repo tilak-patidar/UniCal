@@ -16,7 +16,7 @@ export default function SignIn() {
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow">
         <div className="text-center">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900">
-            UniCal
+            SmartCalendr
           </h1>
           <p className="mt-2 text-sm text-gray-600">
             Sign in to access your unified calendar

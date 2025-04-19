@@ -1,4 +1,4 @@
-# Test Summary for UniCal Application
+# Test Summary for SmartCalendr Application
 
 ## Coverage Summary
 
@@ -15,7 +15,7 @@
 
 ## Test Implementation
 
-We have implemented comprehensive tests for all components and services in the UniCal application using React Testing Library and Jest. The tests cover various scenarios and edge cases to ensure the application works as expected.
+We have implemented comprehensive tests for all components and services in the SmartCalendr application using React Testing Library and Jest. The tests cover various scenarios and edge cases to ensure the application works as expected.
 
 ### Components Tested
 

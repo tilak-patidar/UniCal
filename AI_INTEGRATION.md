@@ -1,6 +1,6 @@
 # AI Integration for Calendar Assistant
 
-This document explains the AI integration for the Unical Calendar application. The AI assistant helps users query and understand their calendar events using natural language.
+This document explains the AI integration for the SmartCalendr application. The AI assistant helps users query and understand their calendar events using natural language.
 
 ## Features
 

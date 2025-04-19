@@ -97,7 +97,7 @@ export default function Header({ onCreateMeeting }: HeaderProps) {
   return (
     <header className="flex items-center justify-between p-4 border-b bg-white">
       <div className="flex items-center space-x-2">
-        <h1 className="text-2xl font-bold text-indigo-700">UniCal</h1>
+        <h1 className="text-2xl font-bold text-indigo-700">SmartCalendr</h1>
         <span className="text-sm text-gray-500">Your Unified Calendar</span>
       </div>
 

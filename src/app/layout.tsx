@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UniCal - Unified Calendar",
+  title: "SmartCalendr - Unified Calendar",
   description: "An app to unify Google and Microsoft calendars",
 };
 

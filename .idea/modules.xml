@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/unical.iml" filepath="$PROJECT_DIR$/.idea/unical.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/smartcalendr.iml" filepath="$PROJECT_DIR$/.idea/smartcalendr.iml" />
     </modules>
   </component>
 </project>

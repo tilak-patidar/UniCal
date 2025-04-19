@@ -1,6 +1,6 @@
-# UniCal - Unified Calendar
+# SmartCalendr - Unified Calendar
 
-UniCal is a modern web application that allows users to connect and view their Google and Microsoft calendars in one unified interface.
+SmartCalendr is a modern web application that allows users to connect and view their Google and Microsoft calendars in one unified interface.
 
 ## Features
 
@@ -31,8 +31,8 @@ UniCal is a modern web application that allows users to connect and view their G
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/unical.git
-   cd unical
+   git clone https://github.com/yourusername/smartcalendr.git
+   cd smartcalendr
    ```
 
 2. Install dependencies:
