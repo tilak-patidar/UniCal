@@ -123,16 +123,20 @@ async function getClaudeResponse(query: string, events: CalendarEventData[]) {
   tomorrowDate.setDate(currentTime.getDate() + 1);
   const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
   
-  // Today's events - use exact date matching
+  // Today's events - use exact date matching with consistent timezone handling
   const todayEvents = enrichedEvents.filter(event => {
+    // Convert dates to UTC to ensure consistent comparison across environments
     const eventDate = new Date(event.rawStart);
-    return eventDate.toISOString().split('T')[0] === todayStr;
+    const eventDateStr = eventDate.toISOString().split('T')[0];
+    return eventDateStr === todayStr;
   }).sort((a, b) => a.startTimestamp - b.startTimestamp);
   
-  // Tomorrow's events - use exact date matching
+  // Tomorrow's events - use exact date matching with consistent timezone handling
   const tomorrowEvents = enrichedEvents.filter(event => {
+    // Convert dates to UTC to ensure consistent comparison across environments
     const eventDate = new Date(event.rawStart);
-    return eventDate.toISOString().split('T')[0] === tomorrowStr;
+    const eventDateStr = eventDate.toISOString().split('T')[0];
+    return eventDateStr === tomorrowStr;
   }).sort((a, b) => a.startTimestamp - b.startTimestamp);
   
   // Upcoming events
@@ -428,15 +432,21 @@ Based on this calendar data, please answer my question: ${query}`;
     // For today queries
     if (normalizedQuery.includes('today')) {
       relatedEvents = events.filter(event => {
+        // Convert dates to UTC to ensure consistent comparison across environments
         const eventDate = new Date(event.start);
-        return eventDate.toISOString().split('T')[0] === todayStr;
+        const eventDateStr = eventDate.toISOString().split('T')[0];
+        console.log(`Today comparison: Event date ${eventDateStr}, Today ${todayStr}, Match: ${eventDateStr === todayStr}`);
+        return eventDateStr === todayStr;
       });
     } 
     // For tomorrow queries
     else if (normalizedQuery.includes('tomorrow')) {
       relatedEvents = events.filter(event => {
+        // Convert dates to UTC to ensure consistent comparison across environments
         const eventDate = new Date(event.start);
-        return eventDate.toISOString().split('T')[0] === tomorrowStr;
+        const eventDateStr = eventDate.toISOString().split('T')[0];
+        console.log(`Tomorrow comparison: Event date ${eventDateStr}, Tomorrow ${tomorrowStr}, Match: ${eventDateStr === tomorrowStr}`);
+        return eventDateStr === tomorrowStr;
       });
     } 
     // For date format queries (e.g., 21/04/2025 or 2025-04-21)
@@ -631,10 +641,11 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
   
   // Time-based queries
   if (normalizedQuery.includes('today') || normalizedQuery.includes('meetings today')) {
-    // Use exact date matching instead of string includes
+    // Use exact date matching with consistent timezone handling
     relatedEvents = events.filter(event => {
       const eventDate = new Date(event.start);
-      return eventDate.toISOString().split('T')[0] === todayStr;
+      const eventDateStr = eventDate.toISOString().split('T')[0];
+      return eventDateStr === todayStr;
     });
     
     if (relatedEvents.length === 0) {
@@ -652,10 +663,11 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
     }
   } 
   else if (normalizedQuery.includes('tomorrow') || normalizedQuery.includes('meetings tomorrow')) {
-    // Use exact date matching instead of string includes
+    // Use exact date matching with consistent timezone handling
     relatedEvents = events.filter(event => {
       const eventDate = new Date(event.start);
-      return eventDate.toISOString().split('T')[0] === tomorrowStr;
+      const eventDateStr = eventDate.toISOString().split('T')[0];
+      return eventDateStr === tomorrowStr;
     });
     
     if (relatedEvents.length === 0) {
