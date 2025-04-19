@@ -100,17 +100,37 @@ export async function getGoogleCalendarEvents(accessToken: string): Promise<Cale
 
     console.log(`Retrieved ${response.data.items?.length || 0} Google events`);
     
-    return response.data.items.map((event: GoogleCalendarEvent) => ({
-      id: event.id,
-      title: event.summary || "No Title",
-      start: new Date(event.start.dateTime || event.start.date || ""),
-      end: new Date(event.end.dateTime || event.end.date || ""),
-      location: event.location,
-      description: event.description,
-      source: "google" as const,
-      allDay: Boolean(event.start.date),
-      meetingLink: event.hangoutLink || event.conferenceData?.entryPoints?.find(entryPoint => entryPoint.entryPointType === 'video')?.uri
-    }));
+    return response.data.items.map((event: GoogleCalendarEvent) => {
+      // Extract Zoom meeting link from description or location
+      const extractZoomLink = (text?: string): string | undefined => {
+        if (!text) return undefined;
+        
+        // Regular expression to match Zoom meeting URLs
+        const zoomRegex = /(https:\/\/[\w-]*\.?zoom\.us\/j\/[^\s"'<>]+)/i;
+        const match = text.match(zoomRegex);
+        return match ? match[1] : undefined;
+      };
+
+      // Check for Zoom meeting link in description or location
+      const zoomLink = extractZoomLink(event.description) || extractZoomLink(event.location);
+      
+      // Get the meeting link - prioritize: 1. Google Meet link, 2. Zoom link, 3. Video entry point
+      const meetingLink = event.hangoutLink || 
+                          zoomLink ||
+                          event.conferenceData?.entryPoints?.find(entryPoint => entryPoint.entryPointType === 'video')?.uri;
+
+      return {
+        id: event.id,
+        title: event.summary || "No Title",
+        start: new Date(event.start.dateTime || event.start.date || ""),
+        end: new Date(event.end.dateTime || event.end.date || ""),
+        location: event.location,
+        description: event.description,
+        source: "google" as const,
+        allDay: Boolean(event.start.date),
+        meetingLink
+      };
+    });
   } catch (error) {
     console.error("Error fetching Google Calendar events", error);
     return [];
@@ -155,10 +175,24 @@ export async function getMicrosoftCalendarEvents(accessToken: string): Promise<C
       return [];
     }
 
+    // Function to extract Zoom meeting links from text
+    const extractZoomLink = (text?: string): string | undefined => {
+      if (!text) return undefined;
+      
+      // Regular expression to match Zoom meeting URLs
+      const zoomRegex = /(https:\/\/[\w-]*\.?zoom\.us\/j\/[^\s"'<>]+)/i;
+      const match = text.match(zoomRegex);
+      return match ? match[1] : undefined;
+    };
+
     const events = response.data.value.map((event: MicrosoftCalendarEvent) => {
       // Convert Microsoft's date format to a JavaScript Date object
       const startDate = new Date(event.start.dateTime + (event.start.dateTime.includes('Z') ? '' : 'Z'));
       const endDate = new Date(event.end.dateTime + (event.end.dateTime.includes('Z') ? '' : 'Z'));
+      
+      // Check for Zoom meeting link in description or location
+      const locationText = event.location?.displayName;
+      const zoomLink = extractZoomLink(event.bodyPreview) || extractZoomLink(locationText);
       
       return {
         id: event.id,
@@ -169,7 +203,7 @@ export async function getMicrosoftCalendarEvents(accessToken: string): Promise<C
         description: event.bodyPreview,
         source: "microsoft" as const,
         allDay: event.isAllDay,
-        meetingLink: event.onlineMeeting?.joinUrl || event.onlineMeetingUrl
+        meetingLink: event.onlineMeeting?.joinUrl || event.onlineMeetingUrl || zoomLink
       };
     });
     
@@ -240,6 +274,19 @@ export async function createGoogleCalendarEvent(accessToken: string, event: NewC
       }
     );
 
+    // Extract Zoom meeting link from description or location
+    const extractZoomLink = (text?: string): string | undefined => {
+      if (!text) return undefined;
+      
+      // Regular expression to match Zoom meeting URLs
+      const zoomRegex = /(https:\/\/[\w-]*\.?zoom\.us\/j\/[^\s"'<>]+)/i;
+      const match = text.match(zoomRegex);
+      return match ? match[1] : undefined;
+    };
+
+    // Check for Zoom meeting link in description or location
+    const zoomLink = extractZoomLink(response.data.description) || extractZoomLink(response.data.location);
+    
     // Convert to our CalendarEvent format
     return {
       id: response.data.id,
@@ -251,9 +298,10 @@ export async function createGoogleCalendarEvent(accessToken: string, event: NewC
       source: "google" as const,
       allDay: Boolean(response.data.start.date),
       meetingLink: response.data.hangoutLink || 
-                  response.data.conferenceData?.entryPoints?.find(
-                    (entryPoint: any) => entryPoint.entryPointType === 'video'
-                  )?.uri
+                   zoomLink ||
+                   response.data.conferenceData?.entryPoints?.find(
+                     (entryPoint: any) => entryPoint.entryPointType === 'video'
+                   )?.uri
     };
   } catch (error) {
     console.error("Error creating Google Calendar event", error);
@@ -309,6 +357,20 @@ export async function createMicrosoftCalendarEvent(accessToken: string, event: N
       }
     );
 
+    // Function to extract Zoom meeting links from text
+    const extractZoomLink = (text?: string): string | undefined => {
+      if (!text) return undefined;
+      
+      // Regular expression to match Zoom meeting URLs
+      const zoomRegex = /(https:\/\/[\w-]*\.?zoom\.us\/j\/[^\s"'<>]+)/i;
+      const match = text.match(zoomRegex);
+      return match ? match[1] : undefined;
+    };
+
+    // Check for Zoom meeting link in description or location
+    const locationText = response.data.location?.displayName;
+    const zoomLink = extractZoomLink(response.data.bodyPreview) || extractZoomLink(locationText);
+
     // Convert to our CalendarEvent format
     return {
       id: response.data.id,
@@ -319,7 +381,7 @@ export async function createMicrosoftCalendarEvent(accessToken: string, event: N
       description: response.data.bodyPreview,
       source: "microsoft" as const,
       allDay: response.data.isAllDay,
-      meetingLink: response.data.onlineMeeting?.joinUrl || response.data.onlineMeetingUrl
+      meetingLink: response.data.onlineMeeting?.joinUrl || response.data.onlineMeetingUrl || zoomLink
     };
   } catch (error) {
     console.error("Error creating Microsoft Calendar event", error);
