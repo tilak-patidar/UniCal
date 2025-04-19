@@ -134,6 +134,22 @@ async function getClaudeResponse(query: string, events: CalendarEventData[]) {
   const upcomingEvents = enrichedEvents
     .filter(event => new Date(event.rawStart) > currentTime)
     .sort((a, b) => a.startTimestamp - b.startTimestamp);
+    
+  // Get next week's events organized by day
+  const nextWeekStart = new Date(currentTime);
+  nextWeekStart.setDate(currentTime.getDate() + (7 - currentTime.getDay()));
+  const nextWeekEnd = new Date(nextWeekStart);
+  nextWeekEnd.setDate(nextWeekStart.getDate() + 7);
+  
+  // Organize upcoming events by date for better context
+  const eventsByDate = {};
+  for (const event of enrichedEvents) {
+    const eventDate = new Date(event.rawStart).toISOString().split('T')[0];
+    if (!eventsByDate[eventDate]) {
+      eventsByDate[eventDate] = [];
+    }
+    eventsByDate[eventDate].push(event);
+  }
   
   // Past events (limited to last 2 weeks)
   const twoWeeksAgo = new Date(currentTime);
@@ -169,6 +185,9 @@ IMPORTANT GUIDELINES:
 9. Use proper formatting with line breaks between sections and bullet points for lists
 10. For "next meeting" queries, find the next chronological meeting after the current time
 11. Keep responses focused and concise - users prefer brief listings over detailed descriptions
+12. For date-specific queries (e.g., "meetings on Monday", "meetings next week", "meetings on 21/04/2025"), carefully count ALL meetings on that exact date/range
+13. Be accurate about date availability - your calendar contains ALL events from the user's calendar - if dates appear in the CALENDAR DATA BY DATE section, those dates have accurate meeting information
+14. NEVER claim "I don't have data for that date" or "The calendar only shows dates from X to Y" - the calendar data provided is complete
 
 FORMATTING GUIDELINES:
 1. Always use bullet points (•) when listing multiple meetings or events
@@ -204,9 +223,51 @@ User: "Do I have any meetings with Sarah?"
 Assistant: "Yes, you have 2 upcoming meetings with Sarah:
 
 • **Project Planning** from 11:00 AM to 12:00 PM on Thursday, June 12
-• **Budget Review** from 2:00 PM to 3:00 PM on Monday, June 16"`;
+• **Budget Review** from 2:00 PM to 3:00 PM on Monday, June 16"
+
+User: "What meetings do I have next Monday?"
+Assistant: "For Monday, April 26 (next Monday), you have 3 meetings:
+
+• **Team Sync** from 9:00 AM to 9:30 AM
+• **Product Review** from 1:00 PM to 2:30 PM
+• **Weekly Planning** from 4:00 PM to 4:30 PM"
+
+User: "What meetings do I have on 21/04/2025?"
+Assistant: "For Monday, April 21, 2025, you have 2 meetings:
+
+• **Team Standup** from 10:00 AM to 10:30 AM
+• **Client Presentation** from 2:00 PM to 3:30 PM"`;
 
     // Prepare user message with structured calendar data
+    // First, let's ensure our date data is accurate
+    const calendarDateMap = {};
+    
+    // Process each event to organize by date with the actual event data
+    events.forEach(event => {
+      const eventDate = new Date(event.start);
+      const dateKey = eventDate.toISOString().split('T')[0];
+      
+      if (!calendarDateMap[dateKey]) {
+        calendarDateMap[dateKey] = [];
+      }
+      
+      calendarDateMap[dateKey].push({
+        id: event.id,
+        title: event.title,
+        start: eventDate,
+        end: new Date(event.end),
+        location: event.location,
+        description: event.description,
+        source: event.source,
+        hasLink: event.meetingLink ? true : false
+      });
+    });
+    
+    // Sort events for each date by start time
+    Object.keys(calendarDateMap).forEach(date => {
+      calendarDateMap[date].sort((a, b) => a.start.getTime() - b.start.getTime());
+    });
+    
     const userMessage = `The current time is ${formattedTime}.
 
 MY CALENDAR DATA:
@@ -222,6 +283,30 @@ ${upcomingEvents.length > 0 ? formatEventsList(upcomingEvents.slice(0, 10)) : "N
 
 RECENT PAST MEETINGS (${pastEvents.length}):
 ${pastEvents.length > 0 ? formatEventsList(pastEvents.slice(0, 5)) : "No recent past meetings."}
+
+CALENDAR DATA BY DATE:
+IMPORTANT: The following section contains the user's COMPLETE calendar data for ALL dates. 
+- This data is complete and accurate.
+- Do NOT invent events that aren't listed.
+- Do NOT claim events exist when they are not listed below.
+- NEVER say "I only have data from X to Y" - this data is complete for all dates mentioned in the query.
+
+${Object.keys(calendarDateMap)
+  .sort()
+  .map(date => {
+    const dateObj = new Date(date);
+    const formattedDate = `${dayNames[dateObj.getDay()]}, ${monthNames[dateObj.getMonth()]} ${dateObj.getDate()}, ${dateObj.getFullYear()}`;
+    const dateEvents = calendarDateMap[date];
+    
+    const formattedEvents = dateEvents.map(event => {
+      const startTime = event.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const endTime = event.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `• **${event.title}** from ${startTime} to ${endTime}`;
+    }).join('\n');
+    
+    return `${formattedDate} (${dateEvents.length} meetings):\n${formattedEvents}`;
+  })
+  .join('\n\n')}
 
 Based on this calendar data, please answer my question: ${query}`;
 
@@ -259,6 +344,74 @@ Based on this calendar data, please answer my question: ${query}`;
         event.start.includes(tomorrowStr)
       );
     } 
+    // For date format queries (e.g., 21/04/2025 or 2025-04-21)
+    else if (normalizedQuery.match(/\d{1,2}\/\d{1,2}\/\d{4}/) || normalizedQuery.match(/\d{4}-\d{1,2}-\d{1,2}/)) {
+      // Extract date from the query
+      let targetDate;
+      
+      // Try DD/MM/YYYY format
+      const ddmmyyyyMatch = normalizedQuery.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (ddmmyyyyMatch) {
+        const [_, day, month, year] = ddmmyyyyMatch;
+        targetDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+      } else {
+        // Try YYYY-MM-DD format
+        const yyyymmddMatch = normalizedQuery.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (yyyymmddMatch) {
+          const [_, year, month, day] = yyyymmddMatch;
+          targetDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+        }
+      }
+      
+      if (targetDate && !isNaN(targetDate.getTime())) {
+        const targetDateStr = targetDate.toISOString().split('T')[0];
+        
+        // Highlight events for the target date
+        relatedEvents = events.filter(event => 
+          event.start.includes(targetDateStr)
+        );
+      }
+    }
+    // For weekday queries
+    else if (normalizedQuery.includes('monday') || normalizedQuery.includes('tuesday') || 
+        normalizedQuery.includes('wednesday') || normalizedQuery.includes('thursday') || 
+        normalizedQuery.includes('friday') || normalizedQuery.includes('saturday') || 
+        normalizedQuery.includes('sunday')) {
+      
+      // Check for weekday names
+      const weekdayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      let matchedWeekday = -1;
+      let isNextWeek = false;
+      
+      // Find mentioned weekday
+      for (let i = 0; i < weekdayNames.length; i++) {
+        if (normalizedQuery.includes(weekdayNames[i])) {
+          matchedWeekday = i;
+          isNextWeek = normalizedQuery.includes("next");
+          break;
+        }
+      }
+      
+      if (matchedWeekday >= 0) {
+        // Calculate target date
+        const currentDayOfWeek = currentTime.getDay();
+        const targetDate = new Date(currentTime);
+        let daysToAdd = matchedWeekday - currentDayOfWeek;
+        
+        // If target day is before today or if explicitly asking for next week
+        if (daysToAdd <= 0 || isNextWeek) {
+          daysToAdd += 7; // Go to next week
+        }
+        
+        targetDate.setDate(currentTime.getDate() + daysToAdd);
+        const targetDateStr = targetDate.toISOString().split('T')[0];
+        
+        // Highlight events for the target date
+        relatedEvents = events.filter(event => 
+          event.start.includes(targetDateStr)
+        );
+      }
+    }
     // For next meeting queries
     else if (normalizedQuery.includes('next meeting') || normalizedQuery.includes('next appointment')) {
       const nextEvent = events
@@ -379,6 +532,22 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
   
+  // Handle weekday queries
+  const weekdayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const currentDayOfWeek = today.getDay();
+  
+  let matchedWeekday = -1;
+  let isNextWeek = false;
+  
+  // Check for weekday mentions
+  for (let i = 0; i < weekdayNames.length; i++) {
+    if (normalizedQuery.includes(weekdayNames[i])) {
+      matchedWeekday = i;
+      isNextWeek = normalizedQuery.includes("next");
+      break;
+    }
+  }
+  
   // Time-based queries
   if (normalizedQuery.includes('today') || normalizedQuery.includes('meetings today')) {
     relatedEvents = events.filter(event => 
@@ -401,6 +570,82 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
       answer = '**Tomorrow\'s Schedule:**\n\nYou have no meetings scheduled for tomorrow.';
     } else {
       answer = `**Tomorrow's Schedule:**\n\nYou have ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} tomorrow.`;
+      answer += formatMeetingsList(relatedEvents);
+    }
+  }
+  // Date format queries (e.g., 21/04/2025 or 2025-04-21)
+  else if (normalizedQuery.match(/\d{1,2}\/\d{1,2}\/\d{4}/) || normalizedQuery.match(/\d{4}-\d{1,2}-\d{1,2}/)) {
+    // Extract date from the query
+    let targetDate;
+    
+    // Try DD/MM/YYYY format
+    const ddmmyyyyMatch = normalizedQuery.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (ddmmyyyyMatch) {
+      const [_, day, month, year] = ddmmyyyyMatch;
+      targetDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+    } else {
+      // Try YYYY-MM-DD format
+      const yyyymmddMatch = normalizedQuery.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (yyyymmddMatch) {
+        const [_, year, month, day] = yyyymmddMatch;
+        targetDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+      }
+    }
+    
+    if (targetDate && !isNaN(targetDate.getTime())) {
+      const targetDateStr = targetDate.toISOString().split('T')[0];
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+                         "July", "August", "September", "October", "November", "December"];
+      const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      
+      // Find events for the specific date - ensure we're using the ISO date comparison
+      relatedEvents = events.filter(event => {
+        const eventDate = new Date(event.start);
+        return eventDate.toISOString().split('T')[0] === targetDateStr;
+      }).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      
+      // Format for display
+      const formattedDate = `${weekdayNames[targetDate.getDay()]}, ${monthNames[targetDate.getMonth()]} ${targetDate.getDate()}, ${targetDate.getFullYear()}`;
+      
+      if (relatedEvents.length === 0) {
+        answer = `**${formattedDate} Schedule:**\n\nYou have no meetings scheduled for ${formattedDate}.`;
+      } else {
+        answer = `**${formattedDate} Schedule:**\n\nYou have ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} scheduled for this date.`;
+        answer += formatMeetingsList(relatedEvents);
+      }
+    } else {
+      answer = "I couldn't understand the date format. Please try using DD/MM/YYYY or YYYY-MM-DD format.";
+    }
+  }
+  // Weekday-based queries
+  else if (matchedWeekday >= 0) {
+    // Calculate target date based on weekday and next week flag
+    const targetDate = new Date(today);
+    let daysToAdd = matchedWeekday - currentDayOfWeek;
+    
+    // If target day is before today or if explicitly asking for next week
+    if (daysToAdd <= 0 || isNextWeek) {
+      daysToAdd += 7; // Go to next week
+    }
+    
+    targetDate.setDate(today.getDate() + daysToAdd);
+    const targetDateStr = targetDate.toISOString().split('T')[0];
+    
+    // Filter events for the target date - ensure we're using the ISO date comparison
+    relatedEvents = events.filter(event => {
+      const eventDate = new Date(event.start);
+      return eventDate.toISOString().split('T')[0] === targetDateStr;
+    }).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    
+    // Format the date for display
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+                       "July", "August", "September", "October", "November", "December"];
+    const formattedDate = `${weekdayNames[matchedWeekday].charAt(0).toUpperCase() + weekdayNames[matchedWeekday].slice(1)}, ${monthNames[targetDate.getMonth()]} ${targetDate.getDate()}`;
+    
+    if (relatedEvents.length === 0) {
+      answer = `**${formattedDate} Schedule:**\n\nYou have no meetings scheduled for ${isNextWeek ? 'next' : ''} ${weekdayNames[matchedWeekday]}.`;
+    } else {
+      answer = `**${formattedDate} Schedule:**\n\nYou have ${relatedEvents.length} meeting${relatedEvents.length === 1 ? '' : 's'} scheduled for ${isNextWeek ? 'next' : ''} ${weekdayNames[matchedWeekday]}.`;
       answer += formatMeetingsList(relatedEvents);
     }
   }
@@ -436,7 +681,13 @@ async function processCalendarQuery(query: string, events: CalendarEventData[]) 
       const nextEvent = upcomingEvents[0];
       const startDate = new Date(nextEvent.start);
       const endDate = new Date(nextEvent.end);
-      answer = `**Next Meeting:**\n\nYour next meeting is **${nextEvent.title}** on ${formatDate(nextEvent.start)} from ${formatTime(nextEvent.start)} to ${formatTime(nextEvent.end)}.`;
+      
+      // Format with accurate time information
+      const formattedDate = startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      const startTimeStr = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const endTimeStr = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      
+      answer = `**Next Meeting:**\n\nYour next meeting is **${nextEvent.title}** on ${formattedDate} from ${startTimeStr} to ${endTimeStr}.`;
       
       // Only add meeting link info if available
       if (nextEvent.meetingLink) {
