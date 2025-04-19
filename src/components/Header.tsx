@@ -4,6 +4,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { Fragment, useState, useEffect } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import { UserIcon } from "@heroicons/react/24/outline";
+import { PlusIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 
 interface HeaderProps {
@@ -106,24 +107,31 @@ export default function Header({ onCreateMeeting }: HeaderProps) {
           <div className="flex space-x-2">
             <button
               onClick={() => handleConnectProvider("google")}
-              className={`px-3 py-1 text-sm rounded-md ${
+              className={`px-3 py-1 text-sm rounded-md flex items-center ${
                 connectedProviders.includes("google")
-                  ? "bg-[#16a765] text-white cursor-not-allowed"
+                  ? "bg-[#16a765]/80 text-white/90 cursor-not-allowed"
                   : "bg-blue-50 text-blue-600 hover:bg-blue-100"
               }`}
               disabled={connectedProviders.includes("google") || isConnecting}
             >
+              <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 24C5.38 24 0 18.62 0 12C0 5.38 5.38 0 12 0C14.76 0 17.34 0.98 19.36 2.7L16.24 5.82C15.0 4.7 13.56 4.14 12 4.14C7.66 4.14 4.14 7.66 4.14 12C4.14 16.34 7.66 19.86 12 19.86C16.34 19.86 19.86 16.34 19.86 12C19.86 11.28 19.76 10.6 19.58 9.96H12V14.1H22.04C23 18.86 18.86 24 12 24Z" 
+                  fill="currentColor"/>
+              </svg>
               {connectedProviders.includes("google") ? "Google Connected" : "Connect Google"}
             </button>
             <button
               onClick={() => handleConnectProvider("azure-ad")}
-              className={`px-3 py-1 text-sm rounded-md ${
+              className={`px-3 py-1 text-sm rounded-md flex items-center ${
                 connectedProviders.includes("azure-ad")
-                  ? "bg-[#0078D4] text-white cursor-not-allowed"
+                  ? "bg-[#0078D4]/80 text-white/90 cursor-not-allowed"
                   : "bg-blue-50 text-blue-600 hover:bg-blue-100"
               }`}
               disabled={connectedProviders.includes("azure-ad") || isConnecting}
             >
+              <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.4 24H0V12.6H11.4V24ZM24 24H12.6V12.6H24V24ZM11.4 11.4H0V0H11.4V11.4ZM24 11.4H12.6V0H24V11.4Z" fill="currentColor"/>
+              </svg>
               {connectedProviders.includes("azure-ad") ? "Microsoft Connected" : "Connect Microsoft"}
             </button>
             
@@ -131,8 +139,9 @@ export default function Header({ onCreateMeeting }: HeaderProps) {
             {(connectedProviders.length > 0) && (
               <button
                 onClick={onCreateMeeting}
-                className="px-4 py-1 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out"
+                className="px-4 py-1 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out flex items-center"
               >
+                <PlusIcon className="w-4 h-4 mr-1" />
                 Create Meeting
               </button>
             )}
