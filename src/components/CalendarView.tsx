@@ -12,7 +12,9 @@ import {
   Agenda, 
   Inject, 
   ViewsDirective, 
-  ViewDirective
+  ViewDirective,
+  PopupOpenEventArgs,
+  QuickInfoTemplatesModel
 } from '@syncfusion/ej2-react-schedule';
 import { registerLicense } from '@syncfusion/ej2-base';
 // Required CSS imports for Syncfusion
@@ -40,8 +42,6 @@ interface StoredAuthToken {
 // Convert CalendarEvent to Syncfusion event data format
 const convertToSyncfusionEvents = (events: CalendarEvent[]) => {
   return events.map(event => {
-    console.log(">>>>>>", event)
-
     return {
       Id: event.id,
       Subject: event.title,
@@ -64,6 +64,37 @@ const eventColorMapping = {
   'unknown': '#808080'   // Gray for unknown sources
 };
 
+// Check if event is upcoming (within 15 minutes)
+const isUpcomingEvent = (startTime: Date): boolean => {
+  const now = new Date();
+  // Is the event today?
+  const isToday = now.toDateString() === startTime.toDateString();
+  if (!isToday) return false;
+  
+  // Calculate time difference in minutes
+  const diffInMinutes = (startTime.getTime() - now.getTime()) / (1000 * 60);
+  // Return true if event is within the next 15 minutes but hasn't started yet
+  return diffInMinutes >= 0 && diffInMinutes <= 15;
+};
+
+// Check if event is joinable (upcoming within 15 minutes or ongoing)
+export const isJoinableEvent = (startTime: Date, endTime: Date): boolean => {
+  const now = new Date();
+  // Is the event today?
+  const isToday = now.toDateString() === startTime.toDateString();
+  if (!isToday) return false;
+  
+  // Event is joinable if:
+  // 1. It's about to start (within next 15 minutes)
+  // 2. It's currently ongoing (started but not ended yet)
+  const isUpcoming = (startTime.getTime() - now.getTime()) >= 0 && 
+                     (startTime.getTime() - now.getTime()) <= 15 * 60 * 1000;
+  const isOngoing = now.getTime() >= startTime.getTime() && 
+                    now.getTime() <= endTime.getTime();
+                    
+  return isUpcoming || isOngoing;
+};
+
 export default function CalendarView() {
   const { data: session } = useSession();
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -71,7 +102,17 @@ export default function CalendarView() {
   const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [highlightedEvents, setHighlightedEvents] = useState<CalendarEvent[]>([]);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const scheduleRef = useRef(null);
+
+  // Update current time every minute to refresh "upcoming" status
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+    
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!session?.accessToken) return;
@@ -232,6 +273,158 @@ export default function CalendarView() {
     }
   };
 
+  // Custom event template
+  const eventTemplate = (props: any) => {
+    const joinable = isJoinableEvent(new Date(props.StartTime), new Date(props.EndTime));
+    const hasLink = props.MeetingLink && props.MeetingLink.length > 0;
+    
+    // Determine if event is upcoming or ongoing
+    const now = new Date();
+    const startTime = new Date(props.StartTime);
+    const isOngoing = now.getTime() >= startTime.getTime();
+    
+    return (
+      <div className="event-wrapper" style={{ padding: '3px 5px', height: '100%', overflow: 'hidden' }}>
+        <div className="event-content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div className="event-header" style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'flex-start', 
+            marginBottom: '2px' 
+          }}>
+            <div className="event-title" style={{ 
+              fontWeight: 'bold', 
+              whiteSpace: 'nowrap', 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis',
+              flex: 1 
+            }}>
+              {props.Subject}
+            </div>
+            
+            {/* Show join button for joinable events */}
+            {joinable && hasLink && (
+              <div className="join-button">
+                <a 
+                  href={props.MeetingLink} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  style={{ 
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    fontSize: '11px',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {isOngoing ? (
+                    <>
+                      <span style={{ marginRight: '3px' }}>🔴</span>
+                      Join Now
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ marginRight: '3px' }}>⚡</span>
+                      Join
+                    </>
+                  )}
+                </a>
+              </div>
+            )}
+          </div>
+          
+          {props.Location && (
+            <div className="event-location" style={{ 
+              fontSize: '12px', 
+              whiteSpace: 'nowrap', 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis' 
+            }}>
+              {props.Location}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Custom quick info templates
+  const quickInfoTemplates: QuickInfoTemplatesModel = {
+    header: (props: any) => {
+      return (
+        <div className="e-header-icon-wrapper">
+          <div className="e-header-icon e-close" title="Close"></div>
+          <div className="e-subject e-text-ellipsis" style={{ padding: '5px', fontWeight: 'bold' }} title={props.Subject}>{props.Subject}</div>
+        </div>
+      );
+    },
+    content: (props: any) => {
+      // Determine if event is ongoing
+      const now = new Date();
+      const startTime = new Date(props.StartTime);
+      const endTime = new Date(props.EndTime);
+      const isOngoing = now.getTime() >= startTime.getTime() && now.getTime() <= endTime.getTime();
+      
+      return (
+        <div className="quick-info-content" style={{ padding: '10px' }}>
+          <div className="event-time" style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
+            <span style={{ marginRight: '5px' }}>🕒</span>
+            {new Date(props.StartTime).toLocaleString()} - {new Date(props.EndTime).toLocaleString()}
+          </div>
+          
+          {props.Location && (
+            <div className="event-location" style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginRight: '5px' }}>📍</span>
+              {props.Location}
+            </div>
+          )}
+          
+          {props.Description && (
+            <div className="event-description" style={{ marginBottom: '10px' }}>
+              <div style={{ fontWeight: '500', marginBottom: '3px' }}>Description:</div>
+              <div>{props.Description}</div>
+            </div>
+          )}
+          
+          {props.MeetingLink && (
+            <div className="meeting-link" style={{ marginTop: '10px' }}>
+              <a 
+                href={props.MeetingLink} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ 
+                  backgroundColor: isOngoing ? '#d92c2c' : '#0078D4',
+                  color: 'white',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  fontWeight: 'bold'
+                }}
+              >
+                <span style={{ marginRight: '5px' }}>{isOngoing ? '🔴' : '🎥'}</span>
+                {isOngoing ? 'Join Now' : 'Join Meeting'}
+              </a>
+            </div>
+          )}
+        </div>
+      );
+    },
+    footer: () => <div></div>
+  };
+
+  // Handle popup opening
+  const onPopupOpen = (args: PopupOpenEventArgs) => {
+    if (args.type === 'QuickInfo' && args.data) {
+      // Handle any additional popup functionality here if needed
+    }
+  };
+
   return (
     <div className="h-full relative">
       {error && (
@@ -257,7 +450,8 @@ export default function CalendarView() {
             eventSettings={{
               dataSource: syncfusionEvents,
               enableTooltip: true,
-              allowMultiple: true
+              allowMultiple: true,
+              template: eventTemplate
             }}
             readonly={true}
             allowResizing={false}
@@ -265,6 +459,8 @@ export default function CalendarView() {
             timeScale={{ enable: true, interval: 30, slotCount: 2 }}
             workHours={{ highlight: true, start: '09:00', end: '18:00' }}
             showQuickInfo={true}
+            quickInfoTemplates={quickInfoTemplates}
+            popupOpen={onPopupOpen}
             currentView="Week"
             firstDayOfWeek={1}
             eventRendered={(args: any) => {
