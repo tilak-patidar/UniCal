@@ -66,8 +66,11 @@ export async function POST(req: NextRequest) {
  * Process user query using Claude AI with optimized prompting for calendar questions
  */
 async function getClaudeResponse(query: string, events: CalendarEventData[]) {
-  // Preprocess events for better context
+  // Preprocess events for better context - use consistent time reference
   const currentTime = new Date();
+  // Get IST date for date comparisons
+  const istOptions = { timeZone: 'Asia/Kolkata' };
+  const istTime = new Date(currentTime.toLocaleString('en-US', istOptions));
   const monthNames = ["January", "February", "March", "April", "May", "June",
                       "July", "August", "September", "October", "November", "December"];
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -82,14 +85,22 @@ async function getClaudeResponse(query: string, events: CalendarEventData[]) {
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
     
-    // Format date string for better readability
+    // Format date string for better readability using IST timezone
     const formatDate = (date) => {
-      return `${dayNames[date.getDay()]}, ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+      // Convert to IST for display
+      const options = { timeZone: 'Asia/Kolkata' };
+      const istDate = new Date(date.toLocaleString('en-US', options));
+      return `${dayNames[istDate.getDay()]}, ${monthNames[istDate.getMonth()]} ${istDate.getDate()}, ${istDate.getFullYear()}`;
     };
     
-    // Format time string for better readability
+    // Format time string for better readability using IST timezone
     const formatTime = (date) => {
-      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true,
+        timeZone: 'Asia/Kolkata'
+      });
     };
     
     // Check if description is empty, undefined or null
@@ -119,11 +130,15 @@ async function getClaudeResponse(query: string, events: CalendarEventData[]) {
     };
   });
   
-  // Organize events by date for better context
-  const todayStr = currentTime.toISOString().split('T')[0];
-  const tomorrowDate = new Date(currentTime);
-  tomorrowDate.setDate(currentTime.getDate() + 1);
+  // Organize events by date for better context - using IST dates
+  const todayStr = istTime.toISOString().split('T')[0];
+  const tomorrowDate = new Date(istTime);
+  tomorrowDate.setDate(istTime.getDate() + 1);
   const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+  
+  // Log for debugging
+  console.log(`Current time in IST: ${formatDateTimeIST(currentTime)}`);
+  console.log(`Today in IST: ${todayStr}, Tomorrow in IST: ${tomorrowStr}`);
   
   // Today's events - use exact date matching with consistent timezone handling
   const todayEvents = enrichedEvents.filter(event => {
@@ -146,9 +161,12 @@ async function getClaudeResponse(query: string, events: CalendarEventData[]) {
     .filter(event => new Date(event.rawStart) > currentTime)
     .sort((a, b) => a.startTimestamp - b.startTimestamp);
     
-  // Get next week's events organized by day
-  const nextWeekStart = new Date(currentTime);
-  nextWeekStart.setDate(currentTime.getDate() + (7 - currentTime.getDay()));
+  // Get next week's events organized by day using IST timezone
+  // Convert current time to IST
+  const options = { timeZone: 'Asia/Kolkata' };
+  const istCurrentTime = new Date(currentTime.toLocaleString('en-US', options));
+  const nextWeekStart = new Date(istCurrentTime);
+  nextWeekStart.setDate(istCurrentTime.getDate() + (7 - istCurrentTime.getDay()));
   const nextWeekEnd = new Date(nextWeekStart);
   nextWeekEnd.setDate(nextWeekStart.getDate() + 7);
   
